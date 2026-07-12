@@ -1,0 +1,58 @@
+2026-03-11 01:24:11,304 | INFO | app.ml.inference.ranking_engine | Initializing Scheme Ranking Engine
+2026-03-11 01:24:11,310 | INFO | app.ml.inference.success_predictor | Loading scheme success model from registry...
+2026-03-11 01:24:11,533 | INFO | app.ml.inference.success_predictor | Scheme success model loaded successfully
+2026-03-11 01:24:11,533 | INFO | app.ml.inference.ranking_engine | Building ML features from farmer profile
+2026-03-11 01:24:11,533 | INFO | app.ml.inference.ranking_engine | Running scheme eligibility rules
+2026-03-11 01:24:11,533 | INFO | app.ml.inference.ranking_engine | Eligible schemes found: 3
+C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\site-packages\sklearn\utils\validation.py:2691: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\site-packages\joblib\externals\loky\backend\context.py:131: UserWarning: Could not find the number of physical cores for the following reason:
+[WinError 2] The system cannot find the file specified
+Returning the number of logical cores instead. You can silence this warning by setting LOKY_MAX_CPU_COUNT to the number of cores you want to use.
+  warnings.warn(
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\site-packages\joblib\externals\loky\backend\context.py", line 247, in _count_physical_cores
+    cpu_count_physical = _count_physical_cores_win32()
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\site-packages\joblib\externals\loky\backend\context.py", line 299, in _count_physical_cores_win32
+    cpu_info = subprocess.run(
+        "wmic CPU Get NumberOfCores /Format:csv".split(),
+        capture_output=True,
+        text=True,
+    )
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1039, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1554, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\site-packages\sklearn\utils\validation.py:2691: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\site-packages\sklearn\utils\validation.py:2691: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+2026-03-11 01:24:11,577 | INFO | app.ml.inference.ranking_engine | Scheme ranking completed
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\Paresh\foler\agri-sense\backend\app\ml\test_full_pipeline.py", line 22, in <module>
+    print(f"Scheme: {scheme['scheme_id']}")
+                     ~~~~~~^^^^^^^^^^^^^
+TypeError: string indices must be integers, not 'str'
+
+===== AI Recommendation Results =====
+

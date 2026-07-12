@@ -1,0 +1,52 @@
+2026-03-11 03:05:05,481 | INFO | app.ml.inference.ranking_engine | Initializing Scheme Ranking Engine
+2026-03-11 03:05:05,489 | INFO | app.ml.inference.success_predictor | Loading scheme success model from registry...
+2026-03-11 03:05:05,822 | INFO | app.ml.inference.success_predictor | Scheme success model loaded successfully
+Cleaned Features: {'income': 80000.0, 'land_size': 1.2, 'state': 'maharashtra', 'crop': 'rice', 'irrigation': 'no', 'farmer_type': 'small', 'income_per_acre': 66666.66666666667}
+
+Checking Scheme: PM_KISAN
+  Rule: farmer_type == small | Farmer: small | Result: True
+  Rule: land_size <= 2 | Farmer: 1.2 | Result: True
+  Rule: income <= 200000 | Farmer: 80000.0 | Result: True
+  FINAL ELIGIBILITY: True
+
+Checking Scheme: DRIP_IRRIGATION
+  Rule: irrigation == False | Farmer: no | Result: False
+  FINAL ELIGIBILITY: False
+
+Checking Scheme: CROP_INSURANCE
+  Rule: crop in ['cotton', 'wheat', 'rice', 'sugarcane'] | Farmer: rice | Result: True
+  Rule: land_size > 0.5 | Farmer: 1.2 | Result: True
+  FINAL ELIGIBILITY: True
+
+Checking Scheme: SMALL_FARMER_SUPPORT
+  Rule: farmer_type == small | Farmer: small | Result: True
+  Rule: income <= 150000 | Farmer: 80000.0 | Result: True
+  Rule: land_size <= 3 | Farmer: 1.2 | Result: True
+  FINAL ELIGIBILITY: True
+
+Checking Scheme: MEDIUM_FARMER_MODERNIZATION
+  Rule: farmer_type == medium | Farmer: small | Result: False
+  FINAL ELIGIBILITY: False
+
+Checking Scheme: LARGE_FARMER_IRRIGATION_SUPPORT
+  Rule: farmer_type == large | Farmer: small | Result: False
+  FINAL ELIGIBILITY: False
+
+Checking Scheme: COTTON_SUPPORT_SCHEME
+  Rule: crop == cotton | Farmer: rice | Result: False
+  FINAL ELIGIBILITY: False
+
+Checking Scheme: RICE_DEVELOPMENT_SCHEME
+  Rule: crop == rice | Farmer: rice | Result: True
+  Rule: irrigation == True | Farmer: no | Result: False
+  FINAL ELIGIBILITY: False
+
+Checking Scheme: SUGARCANE_INCENTIVE
+  Rule: crop == sugarcane | Farmer: rice | Result: False
+  FINAL ELIGIBILITY: False
+
+Checking Scheme: LOW_INCOME_FARMER_AID
+  Rule: income <= 100000 | Farmer: 80000.0 | Result: True
+  Rule: land_size <= 2 | Farmer: 1.2 | Result: True
+  FINAL ELIGIBILITY: True
+

@@ -1,0 +1,17 @@
+Total farmers found: 2
+
+Farmer: Paresh Parkar (pareshparkar92@gmail.com)
+  annual_income: 999999.0 (<class 'float'>)
+  land_size_hectares: 1.5 (<class 'float'>)
+  farmer_type:  (<class 'str'>)
+  irrigation_type:  (<class 'str'>)
+  primary_crops: ['wheat', 'rice'] (<class 'list'>)
+  state: Maharashtra  (<class 'str'>)
+
+Farmer: Test Farmer (test@example.com)
+  annual_income: 100000.0 (<class 'float'>)
+  land_size_hectares: 1.5 (<class 'float'>)
+  farmer_type: Small (<class 'str'>)
+  irrigation_type: Rainfed (<class 'str'>)
+  primary_crops: [] (<class 'list'>)
+  state: Maharashtra (<class 'str'>)

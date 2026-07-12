@@ -1,0 +1,501 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "saved": "Saved",
+    "cancel": "Cancel",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "language": "Language",
+    "success": "Success",
+    "error": "Error",
+    "yes": "Yes",
+    "no": "No",
+    "select": "Select",
+    "upload": "Upload",
+    "continue": "Continue",
+    "logout": "Sign Out",
+    "verified": "Verified",
+    "pending": "Pending",
+    "get_started": "Get Started"
+  },
+  "nav": {
+    "features": "Features",
+    "process": "Process",
+    "testimonials": "Testimonials",
+    "faq": "FAQ",
+    "login": "Login",
+    "get_started": "Get Started"
+  },
+  "hero": {
+    "badge": "NEW: 2026 PM-Kisan Integration Live",
+    "title_1": "Harvest the",
+    "title_highlight": "Benefits",
+    "title_2": "You Deserve.",
+    "subtitle": "Stop missing government support. Our AI scans thousands of Central and State schemes to find and file the perfect match for your farm — automatically.",
+    "cta_primary": "Check Eligibility Free",
+    "cta_secondary": "Watch Demo",
+    "trust_1": "Bank-grade encryption",
+    "trust_2": "No credit card required",
+    "trust_3": "10,000+ farmers trust us",
+    "features_badge": "Platform Features",
+    "features_title": "Everything Your Farm Needs",
+    "features_subtitle": "Six powerful tools built into one platform, designed specifically for Indian farmers navigating complex government programmes.",
+    "title_part1": "Harvest the",
+    "title_part2": "You Deserve.",
+    "watch_demo": "Watch Demo",
+    "features_list": {
+      "0": {
+        "title": "AI Scheme Matching",
+        "desc": "Proprietary engine cross-references your profile with 1,200+ State & Central schemes in real-time."
+      },
+      "1": {
+        "title": "Digital Document Vault",
+        "desc": "AES-256 encrypted storage for land records, Aadhar, and certificates. Upload once, apply forever."
+      },
+      "2": {
+        "title": "Subsidy Analytics",
+        "desc": "Track disbursement cycles with predictive alerts on upcoming agricultural grants."
+      },
+      "3": {
+        "title": "Auto Application Filing",
+        "desc": "Submit verified documents to government portals automatically — no manual form filling."
+      },
+      "4": {
+        "title": "Live Scheme Database",
+        "desc": "Real-time sync with PM-Kisan, state portals, and district-level agricultural boards."
+      },
+      "5": {
+        "title": "Smart Eligibility Detection",
+        "desc": "Machine-learning model trained on 5M+ farmer profiles to surface hidden eligibility."
+      }
+    }
+  },
+  "stats": {
+    "farmers": "Farmers Supported",
+    "schemes": "Government Schemes",
+    "subsidies": "Subsidies Tracked",
+    "accuracy": "Matching Accuracy",
+    "0": {
+      "label": "Farmers Supported"
+    },
+    "1": {
+      "label": "Government Schemes"
+    },
+    "2": {
+      "label": "Subsidies Tracked",
+      "suffix": "Cr+"
+    },
+    "3": {
+      "label": "Matching Accuracy"
+    }
+  },
+  "features": {
+    "badge": "Platform Features",
+    "title": "Everything Your Farm Needs",
+    "subtitle": "Six powerful tools built into one platform, designed specifically for Indian farmers navigating complex government programmes.",
+    "items": {
+      "ai_matching": {
+        "title": "AI Scheme Matching",
+        "desc": "Proprietary engine cross-references your profile with 1,200+ State & Central schemes in real-time."
+      },
+      "vault": {
+        "title": "Digital Document Vault",
+        "desc": "AES-256 encrypted storage for land records, Aadhar, and certificates. Upload once, apply forever."
+      },
+      "analytics": {
+        "title": "Subsidy Analytics",
+        "desc": "Track disbursement cycles with predictive alerts on upcoming agricultural grants."
+      },
+      "auto_file": {
+        "title": "Auto Application Filing",
+        "desc": "Submit verified documents to government portals automatically — no manual form filling."
+      },
+      "database": {
+        "title": "Live Scheme Database",
+        "desc": "Real-time sync with PM-Kisan, state portals, and district-level agricultural boards."
+      },
+      "eligibility": {
+        "title": "Smart Eligibility Detection",
+        "desc": "Machine-learning model trained on 5M+ farmer profiles to surface hidden eligibility."
+      }
+    }
+  },
+  "process": {
+    "badge": "How It Works",
+    "title": "From Profile to Payment in Four Steps.",
+    "steps": {
+      "1": {
+        "title": "AI Finds Eligible Schemes",
+        "desc": "Our engine scans 1,200+ Central and State schemes and ranks your best matches."
+      },
+      "2": {
+        "title": "Upload Your Documents",
+        "desc": "Securely store Aadhar, land records, and bank details in your encrypted vault."
+      },
+      "3": {
+        "title": "Apply Instantly",
+        "desc": "One click auto-submits to all eligible government portals on your behalf."
+      },
+      "4": {
+        "title": "Apply Instantly",
+        "desc": "One click auto-submits to all eligible government portals on your behalf."
+      },
+      "0": {
+        "title": "Create Farmer Profile",
+        "desc": "Enter your land details, crop type, state, and social category in under 5 minutes."
+      }
+    }
+  },
+  "benefits": {
+    "badge": "Why AgriSense",
+    "title": "Built to Give Farmers an Unfair Advantage.",
+    "subtitle": "The average farmer misses out on ₹18,000+ in unclaimed government benefits each year — not because they don't qualify, but because the system is too complex. AgriSense fixes that.",
+    "cta": "Start for Free",
+    "items": {
+      "miss": {
+        "title": "Never Miss a Scheme",
+        "desc": "Real-time alerts when new schemes matching your profile go live."
+      },
+      "time": {
+        "title": "Save Hours on Paperwork",
+        "desc": "Automated form filling eliminates repetitive government applications."
+      },
+      "central": {
+        "title": "Central + State in One Place",
+        "desc": "No more switching between multiple government portals."
+      },
+      "track": {
+        "title": "Track Every Rupee",
+        "desc": "Full disbursement history and pending amount dashboards."
+      }
+    },
+    "start_free": "Start for Free",
+    "list": {
+      "0": {
+        "title": "Never Miss a Scheme",
+        "desc": "Real-time alerts when new schemes matching your profile go live."
+      },
+      "1": {
+        "title": "Save Hours on Paperwork",
+        "desc": "Automated form filling eliminates repetitive government applications."
+      },
+      "2": {
+        "title": "Central + State in One Place",
+        "desc": "No more switching between multiple government portals."
+      },
+      "3": {
+        "title": "Track Every Rupee",
+        "desc": "Full disbursement history and pending amount dashboards."
+      }
+    }
+  },
+  "testimonials": {
+    "badge": "Testimonials",
+    "title": "Farmers Who Got What They Deserved",
+    "items": {
+      "1": {
+        "role": "Sugarcane Farmer, 8 acres",
+        "state": "Maharashtra",
+        "quote": "I had no idea I qualified for three separate schemes. AgriSense found them in minutes and auto-filed my application. I received ₹42,000 in subsidies I would have completely missed."
+      },
+      "2": {
+        "role": "Rice Cultivator, 4 acres",
+        "state": "Tamil Nadu",
+        "quote": "The document vault is a game-changer. I uploaded my Patta once and AgriSense handled applications to five different departments automatically. Truly effortless."
+      },
+      "3": {
+        "role": "Wheat & Maize Farmer, 15 acres",
+        "state": "Punjab",
+        "quote": "The predictive alerts told me about the PM-KUSUM scheme two months before my neighbours heard about it. I was first in line and got approved quickly."
+      }
+    },
+    "list": {
+      "0": {
+        "name": "Ramesh Patil",
+        "state": "Maharashtra",
+        "role": "Sugarcane Farmer, 8 acres",
+        "quote": "I had no idea I qualified for three separate schemes. AgriSense found them in minutes and auto-filed my application. I received ₹42,000 in subsidies I would have completely missed."
+      },
+      "1": {
+        "name": "Kavitha Devi",
+        "state": "Tamil Nadu",
+        "role": "Rice Cultivator, 4 acres",
+        "quote": "The document vault is a game-changer. I uploaded my Patta once and AgriSense handled applications to five different departments automatically. Truly effortless."
+      },
+      "2": {
+        "name": "Gurpreet Singh",
+        "state": "Punjab",
+        "role": "Wheat & Maize Farmer, 15 acres",
+        "quote": "The predictive alerts told me about the PM-KUSUM scheme two months before my neighbours heard about it. I was first in line and got approved quickly."
+      }
+    }
+  },
+  "faq": {
+    "badge": "FAQ",
+    "title": "Common Questions",
+    "items": {
+      "1": {
+        "q": "How does AgriSense find the right government schemes for me?",
+        "a": "Our AI engine analyses your farmer profile — including land size, crop type, state, income, and social category — and cross-references it against a live database of 1,200+ Central and State government schemes. The matching algorithm is trained on millions of real eligibility cases to maximise accuracy."
+      },
+      "2": {
+        "q": "Is my personal and land data secure?",
+        "a": "Absolutely. All documents are encrypted at rest using AES-256 and in transit via TLS 1.3. We are compliant with India's DPDP Act 2023 and never share your data with third parties without explicit consent."
+      },
+      "3": {
+        "q": "Do I need technical knowledge to use the platform?",
+        "a": "Not at all. AgriSense is designed for farmers who may be using smartphones for the first time. The interface supports Hindi and 12 regional languages, and our onboarding takes under 5 minutes."
+      },
+      "4": {
+        "q": "Which government schemes are supported?",
+        "a": "We cover PM-Kisan, PM-KUSUM, PMFBY, Soil Health Card scheme, e-NAM, KCC (Kisan Credit Card), PMKSY, RKVY, and hundreds of state-level schemes across all 28 states and 8 UTs."
+      },
+      "5": {
+        "q": "Is AgriSense free to use?",
+        "a": "The basic plan — profile creation, scheme matching, and eligibility reports — is completely free. Premium features like automated application filing, priority document processing, and subsidiy tracking dashboards are available on affordable paid plans."
+      },
+      "6": {
+        "q": "How long does scheme matching take?",
+        "a": "Instant. Once your profile is complete, our AI delivers your personalised scheme list in under 10 seconds. Application filing to government portals typically completes within 24–48 hours depending on portal availability."
+      }
+    },
+    "list": {
+      "0": {
+        "q": "How does AgriSense find the right government schemes for me?",
+        "a": "Our AI engine analyses your farmer profile — including land size, crop type, state, income, and social category — and cross-references it against a live database of 1,200+ Central and State government schemes. The matching algorithm is trained on millions of real eligibility cases to maximise accuracy."
+      },
+      "1": {
+        "q": "Is my personal and land data secure?",
+        "a": "Absolutely. All documents are encrypted at rest using AES-256 and in transit via TLS 1.3. We are compliant with India's DPDP Act 2023 and never share your data with third parties without explicit consent."
+      },
+      "2": {
+        "q": "Do I need technical knowledge to use the platform?",
+        "a": "Not at all. AgriSense is designed for farmers who may be using smartphones for the first time. The interface supports Hindi and 12 regional languages, and our onboarding takes under 5 minutes."
+      },
+      "3": {
+        "q": "Which government schemes are supported?",
+        "a": "We cover PM-Kisan, PM-KUSUM, PMFBY, Soil Health Card scheme, e-NAM, KCC (Kisan Credit Card), PMKSY, RKVY, and hundreds of state-level schemes across all 28 states and 8 UTs."
+      },
+      "4": {
+        "q": "Is AgriSense free to use?",
+        "a": "The basic plan — profile creation, scheme matching, and eligibility reports — is completely free. Premium features like automated application filing, priority document processing, and subsidiy tracking dashboards are available on affordable paid plans."
+      },
+      "5": {
+        "q": "How long does scheme matching take?",
+        "a": "Instant. Once your profile is complete, our AI delivers your personalised scheme list in under 10 seconds. Application filing to government portals typically completes within 24–48 hours depending on portal availability."
+      }
+    }
+  },
+  "cta": {
+    "badge": "Free to Start",
+    "title": "Start Finding Your Government Benefits Today",
+    "desc": "Join 10,000+ farmers who have already claimed ₹50Cr+ in government subsidies. No paperwork, no confusion — just results.",
+    "button": "Get Started Free",
+    "subtitle": "Join 10,000+ farmers who have already claimed ₹50Cr+ in government subsidies. No paperwork, no confusion — just results."
+  },
+  "footer": {
+    "desc": "Bridging technology and tradition to ensure every Indian farmer receives the government support they deserve.",
+    "cols": {
+      "platform": "Platform",
+      "company": "Company",
+      "legal": "Legal"
+    },
+    "links": {
+      "scheme": "Scheme Finder",
+      "vault": "Document Vault",
+      "analytics": "Analytics",
+      "apps": "Applications",
+      "about": "About Us",
+      "blog": "Blog",
+      "careers": "Careers",
+      "press": "Press",
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service",
+      "cookie": "Cookie Policy",
+      "dpdp": "DPDP Act"
+    },
+    "copyright": "© 2026 AgriSense Technologies Pvt. Ltd. All rights reserved.",
+    "langs": "Available in 12 Indian languages",
+    "available_in": "Available in 12 Indian languages",
+    "rights": "© 2026 AgriSense Technologies Pvt. Ltd. All rights reserved.",
+    "col1_title": "Platform",
+    "col1_l1": "Scheme Finder",
+    "col1_l2": "Document Vault",
+    "col1_l3": "Analytics",
+    "col1_l4": "Applications",
+    "col2_title": "Company",
+    "col2_l1": "About Us",
+    "col2_l2": "Blog",
+    "col2_l3": "Careers",
+    "col2_l4": "Press",
+    "col3_title": "Legal",
+    "col3_l1": "Privacy Policy",
+    "col3_l2": "Terms of Service",
+    "col3_l3": "Cookie Policy",
+    "col3_l4": "DPDP Act"
+  },
+  "auth": {
+    "back_home": "Back to Home",
+    "login_title": "Welcome Back",
+    "register_title": "Create Account",
+    "subtitle": "Join the AgriSense platform",
+    "name": "Full Name",
+    "email": "Email",
+    "password": "Password",
+    "login_btn": "Sign In",
+    "register_btn": "Create Account",
+    "need_account": "Need an account? Sign up",
+    "have_account": "Have an account? Login",
+    "toast_login_success": "Welcome back!",
+    "toast_register_success": "Account created! Logging you in...",
+    "toast_fail": "Auth failed"
+  },
+  "wizard": {
+    "step_of": "Step {{current}} of {{total}}",
+    "step_1": "Personal info",
+    "step_2": "Farm Details",
+    "step_3": "Verification",
+    "title": "Complete Your Farmer Profile",
+    "desc": "This information helps our AI find the best schemes for you.",
+    "btn_next_farm": "Next: Farm Details",
+    "btn_save_continue": "Save & Continue",
+    "btn_dashboard": "Go to Dashboard",
+    "toast_saved": "Profile details saved!",
+    "toast_fail": "Failed to save details",
+    "toast_uploading": "Uploading {{type}}...",
+    "toast_upload_success": "{{type}} uploaded successfully!",
+    "toast_upload_fail": "Upload failed for {{type}}",
+    "back": "Back",
+    "go_dashboard": "Go to Dashboard",
+    "next_farm": "Next: Farm Details",
+    "save_continue": "Save & Continue",
+    "step_farm": "Farm Details",
+    "step_personal": "Personal info",
+    "step_verification": "Verification",
+    "step_x_of_y": "Step {{current}} of {{total}}",
+    "subtitle": "This information helps our AI find the best schemes for you.",
+    "toast_success": "Profile details saved!",
+    "verifying": "Verifying Document...",
+    "verified_success": "Verification Successful ✅",
+    "verified_error": "Verification Failed ❌ Please re-upload.",
+    "kyc_gate_title": "Identity Verification",
+    "kyc_gate_desc": "Upload your Aadhaar and PAN cards for automatic verification. This is mandatory to ensure security and eligibility.",
+    "step_4": "Success",
+    "finish_setup": "Finish Setup"
+  },
+  "dashboard": {
+    "nav_home": "Home",
+    "nav_profile": "My Profile",
+    "welcome": "Welcome, {{name}}",
+    "welcome_sub": "Empowering your farm with AI",
+    "verified_profile": "Verified Profile",
+    "complete_setup": "Complete Setup",
+    "total_land": "Total Land",
+    "location_not_set": "Location not set",
+    "verification": "Verification",
+    "update_to_verify": "Update profile to verify",
+    "ai_score": "AI Match Score",
+    "new_matches": "{{count}} New Matches",
+    "schemes_title": "Eligible Government Schemes",
+    "apply": "Apply",
+    "profile_title": "Farmer Profile",
+    "profile_desc": "Ensure your details are accurate for AI scheme matching.",
+    "save_all": "Save All Changes",
+    "toast_profile_updated": "Profile updated successfully!",
+    "toast_profile_failed": "Failed to update profile.",
+    "toast_upload_success": "{{type}} uploaded successfully!",
+    "toast_upload_failed": "Failed to upload document.",
+    "personal_contact": "Personal & Contact",
+    "location_edu": "Location & Education",
+    "identity_fin": "Identity & Financials",
+    "agri_details": "Agricultural Details",
+    "doc_center": "Document Center",
+    "doc_desc": "Upload your Aadhar, PAN, or Land Records here. (OCR Auto-fill coming soon!)",
+    "verified": "Verified",
+    "unverified": "Unverified",
+    "kyc_status": "KYC Status"
+  },
+  "form": {
+    "phone": "Phone Number",
+    "age": "Age",
+    "state": "State",
+    "state_placeholder": "e.g. Maharashtra",
+    "district": "District",
+    "district_placeholder": "e.g. Pune",
+    "pincode": "Pincode",
+    "gender": "Gender",
+    "male": "Male",
+    "female": "Female",
+    "other": "Other",
+    "category": "Category",
+    "general": "General",
+    "obc": "OBC",
+    "sc": "SC",
+    "st": "ST",
+    "diff_abled": "Differently Abled?",
+    "yes": "Yes",
+    "no": "No",
+    "qualification": "Highest Qualification",
+    "edu_none": "None",
+    "edu_primary": "Primary School",
+    "edu_secondary": "Secondary School (10th)",
+    "edu_higher": "Higher Secondary (12th)",
+    "edu_grad": "Graduate or above",
+    "aadhar": "Aadhar Number",
+    "aadhar_placeholder": "12-digit number",
+    "pan": "PAN Number",
+    "pan_placeholder": "ABCDE1234F",
+    "income": "Annual Income (₹)",
+    "bank_linked": "Bank Account Linked for DBT?",
+    "land_size": "Land Size (Hectares)",
+    "farmer_type": "Farmer Type",
+    "type_marginal": "Marginal (up to 1 Ha)",
+    "type_small": "Small (1-2 Ha)",
+    "type_semi": "Semi-Medium (2-4 Ha)",
+    "type_medium": "Medium (4-10 Ha)",
+    "type_large": "Large (>10 Ha)",
+    "irrigation": "Irrigation Type",
+    "irr_rain": "Rainfed / Unirrigated",
+    "irr_canal": "Canal",
+    "irr_bore": "Borewell / Tube well",
+    "irr_drip": "Drip / Sprinkler",
+    "crops": "Primary Crops (Comma separated)",
+    "crops_placeholder": "Wheat, Rice, Cotton...",
+    "doc_type": "Document Type",
+    "doc_aadhar": "Aadhar Card",
+    "doc_pan": "PAN Card",
+    "doc_land": "Land Record (7/12, etc.)",
+    "doc_bank": "Bank Passbook",
+    "select_file": "Select File (Image or PDF)",
+    "upload_file": "Upload File",
+    "verified_docs": "Verified Documents on File",
+    "no_docs": "No documents uploaded yet.",
+    "irr_borewell": "Borewell / Tube well",
+    "irr_rainfed": "Rainfed / Unirrigated",
+    "type_semimedium": "Semi-Medium (2-4 Ha)",
+    "upload_btn": "Upload File",
+    "soil_type": "Soil Type",
+    "soil_alluvial": "Alluvial",
+    "soil_black": "Black / Regur",
+    "soil_red": "Red",
+    "soil_laterite": "Laterite",
+    "soil_desert": "Desert / Arid",
+    "soil_mountain": "Mountain / Forest",
+    "crop_season": "Primary Crop Season",
+    "season_kharif": "Kharif (Monsoon)",
+    "season_rabi": "Rabi (Winter)",
+    "season_zaid": "Zaid (Summer)",
+    "water_source": "Primary Water Source",
+    "water_well": "Well",
+    "water_canal": "Canal",
+    "water_rain": "Rainwater",
+    "water_river": "River / Stream",
+    "water_borewell": "Borewell",
+    "land_ownership": "Land Ownership",
+    "own_owned": "Owned",
+    "own_leased": "Leased / Rented"
+  },
+  "login": "Login"
+}

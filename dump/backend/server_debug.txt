@@ -1,0 +1,45 @@
+2026-03-11 01:23:05,256 | INFO | app.ml.inference.ranking_engine | Initializing Scheme Ranking Engine
+2026-03-11 01:23:05,263 | INFO | app.ml.inference.success_predictor | Loading scheme success model from registry...
+2026-03-11 01:23:05,423 | INFO | app.ml.inference.success_predictor | Scheme success model loaded successfully
+INFO:     Started server process [30432]
+INFO:     Waiting for application startup.
+ERROR:    Traceback (most recent call last):
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\site-packages\starlette\routing.py", line 694, in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+               ~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\site-packages\fastapi\routing.py", line 206, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\site-packages\fastapi\routing.py", line 206, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\site-packages\fastapi\routing.py", line 206, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\site-packages\fastapi\routing.py", line 206, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Paresh\foler\agri-sense\backend\app\main.py", line 12, in lifespan
+    print("\u23f3 Starting up the server...")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u23f3' in position 0: character maps to <undefined>
+
+ERROR:    Application startup failed. Exiting.

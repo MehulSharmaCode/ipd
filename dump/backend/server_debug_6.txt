@@ -1,0 +1,58 @@
+2026-03-11 01:28:29,769 | INFO | app.ml.inference.ranking_engine | Initializing Scheme Ranking Engine
+2026-03-11 01:28:29,776 | INFO | app.ml.inference.success_predictor | Loading scheme success model from registry...
+2026-03-11 01:28:29,941 | INFO | app.ml.inference.success_predictor | Scheme success model loaded successfully
+INFO:     Started server process [5988]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8999 (Press CTRL+C to quit)
+Traceback (most recent call last):
+  File "C:\Users\Paresh\foler\agri-sense\backend\app\api\farmers.py", line 79, in create_farmer
+    result = await db["farmers"].insert_one(farmer_dict)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\concurrent\futures\thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\collection.py", line 669, in insert_one
+    self._insert_one(
+    ~~~~~~~~~~~~~~~~^
+        document,
+        ^^^^^^^^^
+    ...<5 lines>...
+        comment=comment,
+        ^^^^^^^^^^^^^^^^
+    ),
+    ^
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\collection.py", line 609, in _insert_one
+    self.__database.client._retryable_write(acknowledged, _insert_command, session)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\mongo_client.py", line 1522, in _retryable_write
+    with self._tmp_session(session) as s:
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 141, in __enter__
+    return next(self.gen)
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\mongo_client.py", line 1840, in _tmp_session
+    s = self._ensure_session(session)
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\mongo_client.py", line 1823, in _ensure_session
+    return self.__start_session(True, causal_consistency=False)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\mongo_client.py", line 1766, in __start_session
+    self._topology._check_implicit_session_support()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\topology.py", line 573, in _check_implicit_session_support
+    self._check_session_support()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\topology.py", line 589, in _check_session_support
+    self._select_servers_loop(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        readable_server_selector, self.get_server_selection_timeout(), None
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Paresh\AppData\Local\Programs\Python\Python313\Lib\site-packages\pymongo\topology.py", line 259, in _select_servers_loop
+    raise ServerSelectionTimeoutError(
+        f"{self._error_message(selector)}, Timeout: {timeout}s, Topology Description: {self.description!r}"
+    )
+pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [WinError 10061] No connection could be made because the target machine actively refused it (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms), Timeout: 30s, Topology Description: <TopologyDescription id: 69b077e58a125ee57000000f, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('localhost:27017: [WinError 10061] No connection could be made because the target machine actively refused it (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>]>
+Starting up the server...
+Connecting to MongoDB...
+Successfully connected to database: agrisense_db!
+INFO:     127.0.0.1:63056 - "POST /api/farmers/ HTTP/1.1" 500 Internal Server Error

@@ -1,0 +1,12 @@
+2026-03-11 01:23:29,163 | INFO | app.ml.inference.ranking_engine | Initializing Scheme Ranking Engine
+2026-03-11 01:23:29,172 | INFO | app.ml.inference.success_predictor | Loading scheme success model from registry...
+2026-03-11 01:23:29,324 | INFO | app.ml.inference.success_predictor | Scheme success model loaded successfully
+INFO:     Started server process [22944]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+Starting up the server...
+Connecting to MongoDB...
+Successfully connected to database: agrisense_db!
+INFO:     127.0.0.1:51545 - "POST /api/farmers/ HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56812 - "POST /api/farmers/ HTTP/1.1" 404 Not Found

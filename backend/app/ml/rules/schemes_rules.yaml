@@ -1,0 +1,181 @@
+schemes:
+
+  - scheme_id: PM_KISAN
+    name: PM Kisan Samman Nidhi
+    benefit_calculation:
+      type: "flat_rate"
+      base_rate: 6000
+    conflicts_with:
+      - SMALL_FARMER_SUPPORT
+      - LOW_INCOME_FARMER_AID
+    rules:
+      - field: farmer_type
+        operator: "=="
+        value: small
+      - field: land_size
+        operator: "<="
+        value: 2
+      - field: income
+        operator: "<="
+        value: 200000
+
+  - scheme_id: DRIP_IRRIGATION
+    name: Drip Irrigation Subsidy
+    benefit_calculation:
+      type: "per_hectare_subsidy"
+      base_rate_per_ha: 40000
+      crop_multiplier_enabled: true
+    conflicts_with:
+      - LARGE_FARMER_IRRIGATION_SUPPORT
+    rules:
+      - field: irrigation
+        operator: "=="
+        value: no
+      - field: land_size
+        operator: ">"
+        value: 1
+      - field: farmer_type
+        operator: "in"
+        value:
+          - small
+          - medium
+
+  - scheme_id: CROP_INSURANCE
+    name: Pradhan Mantri Fasal Bima Yojana
+    benefit_calculation:
+      type: "per_hectare_subsidy"
+      base_rate_per_ha: 15000
+      crop_multiplier_enabled: false
+    conflicts_with: []
+    rules:
+      - field: crop
+        operator: "in"
+        value:
+          - cotton
+          - wheat
+          - rice
+          - sugarcane
+      - field: land_size
+        operator: ">"
+        value: 0.5
+
+  - scheme_id: SMALL_FARMER_SUPPORT
+    name: Small Farmer Development Scheme
+    benefit_calculation:
+      type: "flat_rate"
+      base_rate: 5000
+    conflicts_with:
+      - PM_KISAN
+      - LOW_INCOME_FARMER_AID
+    rules:
+      - field: farmer_type
+        operator: "=="
+        value: small
+      - field: income
+        operator: "<="
+        value: 150000
+      - field: land_size
+        operator: "<="
+        value: 3
+
+  - scheme_id: MEDIUM_FARMER_MODERNIZATION
+    name: Medium Farmer Modernization Subsidy
+    benefit_calculation:
+      type: "per_hectare_subsidy"
+      base_rate_per_ha: 80000
+      crop_multiplier_enabled: true
+    conflicts_with: []
+    rules:
+      - field: farmer_type
+        operator: "=="
+        value: medium
+      - field: land_size
+        operator: ">"
+        value: 2
+      - field: income
+        operator: "<="
+        value: 300000
+
+  - scheme_id: LARGE_FARMER_IRRIGATION_SUPPORT
+    name: Large Farmer Irrigation Support
+    benefit_calculation:
+      type: "per_hectare_subsidy"
+      base_rate_per_ha: 100000
+      crop_multiplier_enabled: true
+    conflicts_with:
+      - DRIP_IRRIGATION
+    rules:
+      - field: farmer_type
+        operator: "=="
+        value: large
+      - field: land_size
+        operator: ">"
+        value: 3
+      - field: irrigation
+        operator: "=="
+        value: no
+
+  - scheme_id: COTTON_SUPPORT_SCHEME
+    name: Cotton Farmer Support Scheme
+    benefit_calculation:
+      type: "flat_rate"
+      base_rate: 25000
+    conflicts_with: []
+    rules:
+      - field: crop
+        operator: "=="
+        value: cotton
+      - field: farmer_type
+        operator: "in"
+        value:
+          - small
+          - medium
+      - field: land_size
+        operator: ">"
+        value: 1
+
+  - scheme_id: RICE_DEVELOPMENT_SCHEME
+    name: Rice Development Subsidy
+    benefit_calculation:
+      type: "per_hectare_subsidy"
+      base_rate_per_ha: 12000
+      crop_multiplier_enabled: true
+    conflicts_with: []
+    rules:
+      - field: crop
+        operator: "=="
+        value: rice
+      - field: irrigation
+        operator: "=="
+        value: yes
+
+  - scheme_id: SUGARCANE_INCENTIVE
+    name: Sugarcane Farmer Incentive
+    benefit_calculation:
+      type: "per_hectare_subsidy"
+      base_rate_per_ha: 20000
+      crop_multiplier_enabled: true
+    conflicts_with: []
+    rules:
+      - field: crop
+        operator: "=="
+        value: sugarcane
+      - field: land_size
+        operator: ">"
+        value: 2
+
+  - scheme_id: LOW_INCOME_FARMER_AID
+    name: Low Income Farmer Aid Program
+    benefit_calculation:
+      type: "flat_rate"
+      base_rate: 10000
+    conflicts_with:
+      - PM_KISAN
+      - SMALL_FARMER_SUPPORT
+    rules:
+      - field: income
+        operator: "<="
+        value: 100000
+      - field: land_size
+        operator: "<="
+        value: 2

@@ -1,0 +1,13 @@
+2026-03-11 01:26:18,218 | INFO | app.ml.inference.ranking_engine | Initializing Scheme Ranking Engine
+2026-03-11 01:26:18,225 | INFO | app.ml.inference.success_predictor | Loading scheme success model from registry...
+2026-03-11 01:26:18,422 | INFO | app.ml.inference.success_predictor | Scheme success model loaded successfully
+INFO:     Started server process [30788]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8001 (Press CTRL+C to quit)
+Starting up the server...
+Connecting to MongoDB...
+Successfully connected to database: agrisense_db!
+INFO:     127.0.0.1:59790 - "POST /api/farmers/ HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:62984 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58332 - "POST /api/farmers/ HTTP/1.1" 500 Internal Server Error
