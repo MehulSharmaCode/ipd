@@ -46,9 +46,15 @@ else:
     )
 
 # ── Tesseract OCR configuration flags ─────────────────────────────────────────
-# PSM 6 = single uniform block of text (best for ID cards)
-# OEM 3 = use both legacy and LSTM engines (most accurate)
-_TESSERACT_CONFIG = "--oem 3 --psm 6"
+# We try multiple PSM modes and use the result with the most extracted text.
+# PSM 6 = single uniform block of text (default — good for Aadhaar)
+# PSM 11 = sparse text, finds as much text as possible (better for PAN cards)
+# PSM 3 = fully auto page segmentation (good fallback)
+_TESSERACT_CONFIGS = [
+    "--oem 3 --psm 6",   # Primary: uniform block
+    "--oem 3 --psm 11",  # Fallback: sparse text (better for PAN)
+    "--oem 3 --psm 3",   # Fallback: auto layout
+]
 
 
 class OCRResult:
@@ -86,47 +92,63 @@ def _ensure_tesseract_ready():
 
 
 def _run_tesseract(preprocessed_image: np.ndarray) -> OCRResult:
-    """Run Tesseract on a preprocessed numpy array and return OCRResult."""
+    """
+    Run Tesseract on a preprocessed numpy array.
+    Tries multiple PSM modes and returns the one with the most text extracted.
+    This multi-PSM strategy significantly improves PAN card extraction where
+    the single-block PSM 6 often misses text in mixed-layout regions.
+    """
     _ensure_tesseract_ready()
     start = time.monotonic()
-    try:
-        # Re-apply the correct path on every call to guard against import-order
-        # issues where another module may have overwritten tesseract_cmd
-        if _ocr_config.TESSERACT_CMD:
-            pytesseract.pytesseract.tesseract_cmd = _ocr_config.TESSERACT_CMD
 
-        # Get confidence data
-        data = pytesseract.image_to_data(
-            preprocessed_image,
-            config=_TESSERACT_CONFIG,
-            output_type=pytesseract.Output.DICT,
-        )
-        confidences = [int(c) for c in data["conf"] if int(c) > 0]
-        avg_confidence = float(sum(confidences) / len(confidences)) if confidences else 0.0
+    # Re-apply the correct path on every call to guard against import-order
+    # issues where another module may have overwritten tesseract_cmd
+    if _ocr_config.TESSERACT_CMD:
+        pytesseract.pytesseract.tesseract_cmd = _ocr_config.TESSERACT_CMD
 
-        # Get full text
-        text = pytesseract.image_to_string(preprocessed_image, config=_TESSERACT_CONFIG)
+    best_text = ""
+    best_confidence = 0.0
 
-        elapsed_ms = (time.monotonic() - start) * 1000
-        logger.info(
-            f"OCR: confidence={avg_confidence:.1f}%, "
-            f"chars={len(text)}, time={elapsed_ms:.0f}ms"
-        )
-        return OCRResult(text=text, confidence=avg_confidence, processing_time_ms=elapsed_ms)
+    for config in _TESSERACT_CONFIGS:
+        try:
+            # Get confidence data
+            data = pytesseract.image_to_data(
+                preprocessed_image,
+                config=config,
+                output_type=pytesseract.Output.DICT,
+            )
+            confidences = [int(c) for c in data["conf"] if int(c) > 0]
+            avg_confidence = float(sum(confidences) / len(confidences)) if confidences else 0.0
 
-    except pytesseract.TesseractNotFoundError as exc:
-        elapsed_ms = (time.monotonic() - start) * 1000
-        raise RuntimeError(
-            f"pytesseract raised TesseractNotFoundError even though "
-            f"tesseract_cmd='{pytesseract.pytesseract.tesseract_cmd}'. "
-            f"This usually means the binary exists but cannot be executed by the OS. "
-            f"Check file permissions and macOS Gatekeeper. "
-            f"Original error: {exc}"
-        )
-    except Exception as e:
-        elapsed_ms = (time.monotonic() - start) * 1000
-        logger.error(f"Tesseract execution error after {elapsed_ms:.0f}ms: {e}")
-        raise
+            # Get full text
+            text = pytesseract.image_to_string(preprocessed_image, config=config)
+
+            # Keep whichever PSM produces the most text content
+            # (more text = more data available for field extraction)
+            if len(text.strip()) > len(best_text.strip()):
+                best_text = text
+                best_confidence = avg_confidence
+                logger.debug(f"OCR: PSM config '{config}' produced {len(text)} chars @ {avg_confidence:.1f}%")
+
+        except pytesseract.TesseractNotFoundError as exc:
+            elapsed_ms = (time.monotonic() - start) * 1000
+            raise RuntimeError(
+                f"pytesseract raised TesseractNotFoundError even though "
+                f"tesseract_cmd='{pytesseract.pytesseract.tesseract_cmd}'. "
+                f"This usually means the binary exists but cannot be executed by the OS. "
+                f"Check file permissions. Original error: {exc}"
+            )
+        except Exception as e:
+            logger.warning(f"OCR: PSM config '{config}' failed: {e} — trying next config")
+            continue
+
+    elapsed_ms = (time.monotonic() - start) * 1000
+    logger.info(
+        f"OCR: best_confidence={best_confidence:.1f}%, "
+        f"chars={len(best_text)}, time={elapsed_ms:.0f}ms"
+    )
+    return OCRResult(text=best_text, confidence=best_confidence, processing_time_ms=elapsed_ms)
+
 
 
 def extract_from_image(file_path: str) -> OCRResult:

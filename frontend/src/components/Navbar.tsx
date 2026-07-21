@@ -1,26 +1,40 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Leaf, Sun, Moon } from 'lucide-react';
+import { Leaf, Sun, Moon, LogOut, LayoutDashboard } from 'lucide-react';
 import { useTheme } from '@/components/theme-provider';
 import { useTranslationText } from '@/hooks/useTranslationText';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { toast } from 'sonner';
 
 export function Navbar() {
     const { theme, setTheme } = useTheme();
     const { t } = useTranslationText();
     const location = useLocation();
+    const navigate = useNavigate();
     const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('access_token'));
 
     useEffect(() => {
         const checkAuth = () => setIsLoggedIn(!!localStorage.getItem('access_token'));
         checkAuth(); // Initial check on mount/location change
 
-        // Listen for storage changes (works across tabs)
+        // Listen for storage changes (across tabs and local auth events)
         window.addEventListener('storage', checkAuth);
-        return () => window.removeEventListener('storage', checkAuth);
+        window.addEventListener('auth-change', checkAuth);
+        return () => {
+            window.removeEventListener('storage', checkAuth);
+            window.removeEventListener('auth-change', checkAuth);
+        };
     }, [location]);
+
+    const handleLogout = () => {
+        localStorage.removeItem('access_token');
+        setIsLoggedIn(false);
+        window.dispatchEvent(new Event('auth-change'));
+        toast.success(t('common.logout') || 'Logged out successfully');
+        navigate('/');
+    };
 
     return (
         <nav className="fixed top-0 w-full z-50 px-4 pt-4 pointer-events-none">
@@ -40,21 +54,21 @@ export function Navbar() {
                 </Link>
 
                 <div className="hidden md:flex gap-7 text-sm font-medium text-slate-600 dark:text-slate-400">
-                    <Link to="/#features" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                    <a href="/#features" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
                         {t('nav.features') || 'Features'}
-                    </Link>
-                    <Link to="/#process" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                    </a>
+                    <a href="/#process" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
                         {t('nav.process') || 'Process'}
-                    </Link>
-                    <Link to="/#testimonials" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                    </a>
+                    <a href="/#testimonials" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
                         {t('nav.testimonials') || 'Testimonials'}
-                    </Link>
+                    </a>
                     <Link to="/community" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-bold text-emerald-700 dark:text-emerald-300">
                         Community
                     </Link>
-                    <Link to="/#faq" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                    <a href="/#faq" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
                         {t('nav.faq') || 'FAQ'}
-                    </Link>
+                    </a>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -69,11 +83,22 @@ export function Navbar() {
                     <LanguageSwitcher />
 
                     {isLoggedIn ? (
-                        <Link to="/dashboard">
-                            <Button className="h-9 px-5 text-sm bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/25 transition-all hover:scale-105 hover:shadow-emerald-500/40">
-                                {t('dashboard.title') || 'Dashboard'}
+                        <div className="flex items-center gap-2">
+                            <Link to="/dashboard">
+                                <Button className="h-9 px-4 text-sm bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/25 transition-all hover:scale-105 flex items-center gap-1.5">
+                                    <LayoutDashboard className="h-4 w-4" />
+                                    {t('dashboard.title') || 'Dashboard'}
+                                </Button>
+                            </Link>
+                            <Button
+                                variant="ghost"
+                                onClick={handleLogout}
+                                className="h-9 px-3 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl flex items-center gap-1.5"
+                            >
+                                <LogOut className="h-4 w-4" />
+                                {t('common.logout') || 'Sign Out'}
                             </Button>
-                        </Link>
+                        </div>
                     ) : (
                         <>
                             <Link to="/auth">

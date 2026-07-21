@@ -213,19 +213,32 @@ export default function Dashboard() {
         toast.dismiss();
         toast.success(`Policy ingested: ${Object.keys(res.data.extracted_rules || {}).length} rules extracted`);
       } else {
-        docData.append('doc_type', uploadType);
+        // Normalize doc_type to lowercase — backend validates against 'aadhar', 'pan'
+        docData.append('doc_type', uploadType.toLowerCase());
         const res = await api.post('/upload', docData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
 
-        const { ocr_data } = res.data;
-        if (ocr_data && ocr_data.verification_status === "Success") {
-          toast.success(t('dashboard.toast_upload_ocr_success', {
-            type: uploadType,
-            id: ocr_data.extracted_id
-          }) || `Verified ${uploadType}: ${ocr_data.extracted_id}`);
+        // API returns: { status, documentType, confidence, fields, validation, profileSuggestions }
+        const data = res.data;
+        const isValid: boolean = data.validation?.valid === true;
+        const fields = data.fields || {};
+
+        if (isValid) {
+          // Show extracted ID number in the success message
+          const extractedId = fields.aadhaarNumber || fields.panNumber || '';
+          toast.success(
+            extractedId
+              ? `✅ ${uploadType} verified! ID: ${extractedId}`
+              : t('dashboard.toast_upload_success', { type: uploadType }) || `${uploadType} uploaded successfully`
+          );
         } else {
-          toast.success(t('dashboard.toast_upload_success', { type: uploadType }));
+          const warnings = data.validation?.warnings || [];
+          if (warnings.length > 0) {
+            toast.warning(`Document uploaded with warnings: ${warnings[0]}`);
+          } else {
+            toast.success(t('dashboard.toast_upload_success', { type: uploadType }) || `${uploadType} uploaded successfully`);
+          }
         }
 
         setSelectedFile(null);
@@ -237,11 +250,13 @@ export default function Dashboard() {
     } catch (err: any) {
       toast.dismiss();
       console.error(err);
-      toast.error("Upload failed or ingestion error");
+      const errMsg = err.response?.data?.detail || "Upload failed. Please try again.";
+      toast.error(errMsg);
     } finally {
       setUploadingDoc(false);
     }
   };
+
 
 
     if (!farmer) return (

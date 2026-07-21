@@ -30,7 +30,7 @@ schemes:
     rules:
       - field: irrigation
         operator: "=="
-        value: no
+        value: false
       - field: land_size
         operator: ">"
         value: 1

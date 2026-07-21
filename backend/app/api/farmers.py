@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from bson import ObjectId
 from typing import List
 
-from app.models.farmer import FarmerProfile, FarmerResponse
+from app.models.farmer import FarmerProfile, FarmerUpdate, FarmerResponse
 from app.ml.services.recommendation_service import RecommendationService
 from app.services.predictive_alert_service import PredictiveAlertService
 from app.ml.inference.crop_recommender import CropRecommender
@@ -29,63 +29,68 @@ def get_crop_recommender() -> CropRecommender:
 
 
 class CropRecommendRequest(BaseModel):
-    N: float = 0.0
-    P: float = 0.0
-    K: float = 0.0
-    temperature: float = 25.0
-    humidity: float = 60.0
-    ph: float = 6.5
-    rainfall: float = 200.0
+    """Request model for the recommend-crop endpoint.
+    Accepts soil/season/irrigation fields which are mapped to
+    the exact feature schema expected by crop_model.pkl.
+    """
+    soil_type: str = "Alluvial"
+    crop_season: str = "Kharif"
+    irrigation_type: str = "Rainfed"
 
 
 @router.post("/recommend-crop")
 async def recommend_crop(data: dict, current_user: dict = Depends(get_current_user)):
     """
     Mehul Crop Recommendation System - Fully Integrated.
-    Takes farmer profile data (soil_type, crop_season, location) and deduces NPK/Weather 
-    to return the best crop for the provided environmental conditions.
+    Takes farmer profile data (soil_type, crop_season, irrigation_type) and builds
+    the exact feature vector expected by crop_model.pkl:
+      nitrogen, phosphorus, potassium, rainfall, temperature, soil, season, irrigation
     """
-    # 1. Map soil_type back to synthetic NPK data
-    soil_mapping = {
-        "Alluvial": {"N": 40, "P": 40, "K": 40, "ph": 7.0},
-        "Black": {"N": 30, "P": 50, "K": 60, "ph": 7.5},
-        "Red": {"N": 20, "P": 30, "K": 30, "ph": 6.0},
-        "Laterite": {"N": 15, "P": 25, "K": 25, "ph": 5.5},
-        "Desert": {"N": 10, "P": 20, "K": 20, "ph": 8.0},
-        "Mountain": {"N": 45, "P": 40, "K": 35, "ph": 6.5},
+    # 1. Map soil_type → synthetic NPK values
+    soil_npk_mapping = {
+        "Alluvial":  {"nitrogen": 40, "phosphorus": 40, "potassium": 40},
+        "Black":     {"nitrogen": 30, "phosphorus": 50, "potassium": 60},
+        "Red":       {"nitrogen": 20, "phosphorus": 30, "potassium": 30},
+        "Laterite":  {"nitrogen": 15, "phosphorus": 25, "potassium": 25},
+        "Desert":    {"nitrogen": 10, "phosphorus": 20, "potassium": 20},
+        "Mountain":  {"nitrogen": 45, "phosphorus": 40, "potassium": 35},
     }
-    
-    # 2. Map crop_season to environmental conditions (temperature, humidity, rainfall)
+
+    # 2. Map crop_season → climate conditions
     weather_mapping = {
-        "Kharif": {"temperature": 30.0, "humidity": 75.0, "rainfall": 250.0},
-        "Rabi": {"temperature": 20.0, "humidity": 55.0, "rainfall": 50.0},
-        "Zaid": {"temperature": 35.0, "humidity": 40.0, "rainfall": 20.0},
+        "Kharif": {"temperature": 30.0, "rainfall": 250.0},
+        "Rabi":   {"temperature": 20.0, "rainfall": 50.0},
+        "Zaid":   {"temperature": 35.0, "rainfall": 20.0},
     }
 
-    soil_type = data.get("soil_type", "Alluvial") or "Alluvial"
-    season = data.get("crop_season", "Kharif") or "Kharif"
-    
-    s_data = soil_mapping.get(soil_type, soil_mapping["Alluvial"])
-    w_data = weather_mapping.get(season, weather_mapping["Kharif"])
+    soil_type      = str(data.get("soil_type") or "Alluvial")
+    season         = str(data.get("crop_season") or "Kharif")
+    irrigation     = str(data.get("irrigation_type") or "Rainfed")
 
+    npk     = soil_npk_mapping.get(soil_type, soil_npk_mapping["Alluvial"])
+    climate = weather_mapping.get(season, weather_mapping["Kharif"])
+
+    # Build EXACT feature dict matching crop_model.pkl column names
     crop_features = {
-        "N": float(s_data["N"]),
-        "P": float(s_data["P"]),
-        "K": float(s_data["K"]),
-        "temperature": float(w_data["temperature"]),
-        "humidity": float(w_data["humidity"]),
-        "ph": float(s_data["ph"]),
-        "rainfall": float(w_data["rainfall"])
+        "nitrogen":    float(npk["nitrogen"]),
+        "phosphorus":  float(npk["phosphorus"]),
+        "potassium":   float(npk["potassium"]),
+        "rainfall":    float(climate["rainfall"]),
+        "temperature": float(climate["temperature"]),
+        "soil":        soil_type,
+        "season":      season,
+        "irrigation":  irrigation,
     }
 
     recommender = get_crop_recommender()
     if recommender is None:
         raise HTTPException(status_code=503, detail="Crop recommendation model is not available.")
-    
+
     try:
         crop = recommender.recommend_crop(crop_features)
         return {"recommended_crop": str(crop), "status": "success"}
     except Exception as e:
+        logger.error(f"Crop recommendation failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Crop recommendation failed: {str(e)}")
 
 
@@ -139,18 +144,23 @@ async def get_my_profile(current_user: dict = Depends(get_current_user)):
     return farmer
 
 @router.put("/me", response_model=FarmerResponse)
-async def update_my_profile(profile_data: FarmerProfile, current_user: dict = Depends(get_current_user)):
+async def update_my_profile(profile_data: FarmerUpdate, current_user: dict = Depends(get_current_user)):
     """
     Complete or edit the profile of the currently logged-in farmer.
     """
     db = get_db()
     
-    # exclude_unset=True means it will ONLY update the fields the user actually sends in the request
-    update_data = profile_data.model_dump(exclude_unset=True)
+    # exclude_unset=True: only fields explicitly sent by the client
+    # exclude_none=True: don't write None values (these came from empty strings
+    #   coerced to None by the model_validator — we don't want to overwrite
+    #   existing DB data with null when the frontend sends email='' etc.)
+    update_data = profile_data.model_dump(exclude_unset=True, exclude_none=True)
     
-    # Prevent updating the email or password through this route for security
-    update_data.pop("email", None) 
+    # Never allow email or hashed_password to be changed via this route
+    update_data.pop("email", None)
     update_data.pop("hashed_password", None)
+    
+    logger.info(f"Updating farmer {current_user['_id']} with fields: {list(update_data.keys())}")
     
     if update_data:
         await db["farmers"].update_one(

@@ -137,7 +137,8 @@ async def upvote_story(
                 "$pull": {"upvoted_by": farmer_id}
             }
         )
-        return {"detail": "Upvote removed", "upvotes": story.get("upvotes", 1) - 1}
+        new_count = max(0, story.get("upvotes", 1) - 1)
+        return {"detail": "Upvote removed", "upvotes": new_count}
     else:
         # Add upvote
         await db.stories.update_one(

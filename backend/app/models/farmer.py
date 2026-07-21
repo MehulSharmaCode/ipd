@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, EmailStr, field_validator
+from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator, ConfigDict
 from typing import List, Optional
 import re
 
@@ -109,11 +109,114 @@ class FarmerProfile(BaseModel):
         return v
 
 
+class FarmerUpdate(BaseModel):
+    """
+    Used for PUT /api/farmers/me — all fields are optional so the frontend
+    doesn't need to send every field on every update.
+
+    KEY FIX: The frontend spreads the full profile state (which has email='',
+    phone_number='', etc. as empty strings). Pydantic v2 validates empty strings
+    for typed fields like EmailStr and raises a 422. The model_validator below
+    converts all empty strings to None BEFORE per-field validation runs.
+    """
+    model_config = ConfigDict(validate_default=False)
+
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone_number: Optional[str] = None
+    age: Optional[int] = Field(default=None)
+    gender: Optional[str] = None
+    category: Optional[str] = None
+    is_differently_abled: Optional[bool] = None
+    highest_qualification: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    pincode: Optional[str] = None
+    aadhar_number: Optional[str] = None
+    pan_number: Optional[str] = None
+    is_aadhar_verified: Optional[bool] = None
+    is_pan_verified: Optional[bool] = None
+    annual_income: Optional[float] = None
+    bank_account_linked: Optional[bool] = None
+    land_size_hectares: Optional[float] = None
+    farmer_type: Optional[str] = None
+    irrigation_type: Optional[str] = None
+    soil_type: Optional[str] = None
+    crop_season: Optional[str] = None
+    water_source: Optional[str] = None
+    land_ownership: Optional[str] = None
+    primary_crops: Optional[List[str]] = None
+    preferred_language: Optional[str] = None
+    crop: Optional[str] = None
+    temperature: Optional[float] = None
+    rainfall: Optional[float] = None
+    soil: Optional[str] = None
+    season: Optional[str] = None
+    profile_wizard_complete: Optional[bool] = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def coerce_empty_strings_to_none(cls, values: dict) -> dict:
+        """
+        ROOT CAUSE FIX for 422 on PUT /api/farmers/me:
+        The frontend spreads the entire profile state object into the PUT payload.
+        This means fields like email='', phone_number='', gender='' etc. are sent
+        as empty strings. Pydantic v2 does NOT automatically convert '' to None for
+        typed fields like EmailStr — it tries to validate '' as an email and fails.
+
+        This model_validator runs BEFORE any field validators, converting all empty
+        string values to None so that Optional[EmailStr] etc. receive None (valid)
+        instead of '' (invalid email string).
+        """
+        if isinstance(values, dict):
+            return {
+                k: (None if isinstance(v, str) and v.strip() == '' else v)
+                for k, v in values.items()
+            }
+        return values
+
+    @field_validator("aadhar_number")
+    @classmethod
+    def validate_aadhar(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or v == "":
+            return None
+        v = v.replace(" ", "").replace("-", "")
+        if not re.match(r"^\d{12}$", v):
+            raise ValueError("Aadhaar number must be exactly 12 digits")
+        return v
+
+    @field_validator("pan_number")
+    @classmethod
+    def validate_pan(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or v == "":
+            return None
+        v = v.upper().replace(" ", "")
+        if not re.match(r"^[A-Z]{5}[0-9]{4}[A-Z]$", v):
+            raise ValueError("Invalid PAN card format (e.g., ABCDE1234F)")
+        return v
+
+    @field_validator("age", mode="before")
+    @classmethod
+    def validate_age(cls, v) -> Optional[int]:
+        if v is None or v == "" or v == 0:
+            return None
+        try:
+            age = int(v)
+        except (TypeError, ValueError):
+            return None
+        if age < 1 or age > 120:
+            return None
+        return age
+
+
+
 class FarmerDB(FarmerProfile):
     hashed_password: str
 
 
 class FarmerResponse(FarmerProfile):
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str = Field(..., alias="_id")
     recommended_schemes: Optional[List[SchemeRecommendation]] = []
     recommended_bundles: Optional[List[SchemeBundle]] = []

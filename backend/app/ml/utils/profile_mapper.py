@@ -42,20 +42,23 @@ def map_farmer_to_ml_features(api_profile: dict) -> dict:
         try:
             model = _get_crop_model()
             if model:
-                # crop_model.pkl is trained on: N, P, K, temperature, humidity, ph, rainfall
+                # crop_model.pkl was trained on: nitrogen, phosphorus, potassium,
+                # rainfall, temperature, soil, season, irrigation
                 crop_features = {
-                    "N":           float(api_profile.get("N") or api_profile.get("nitrogen", 50)),
-                    "P":           float(api_profile.get("P") or api_profile.get("phosphorus", 50)),
-                    "K":           float(api_profile.get("K") or api_profile.get("potassium", 50)),
-                    "temperature": float(api_profile.get("temperature", 25)),
-                    "humidity":    float(api_profile.get("humidity", 60)),
-                    "ph":          float(api_profile.get("ph", 6.5)),
+                    "nitrogen":    float(api_profile.get("nitrogen") or api_profile.get("N") or 50),
+                    "phosphorus":  float(api_profile.get("phosphorus") or api_profile.get("P") or 50),
+                    "potassium":   float(api_profile.get("potassium") or api_profile.get("K") or 50),
                     "rainfall":    float(api_profile.get("rainfall", 200)),
+                    "temperature": float(api_profile.get("temperature", 25)),
+                    "soil":        str(api_profile.get("soil") or api_profile.get("soil_type") or "Alluvial"),
+                    "season":      str(api_profile.get("season") or api_profile.get("crop_season") or "Kharif"),
+                    "irrigation":  str(api_profile.get("irrigation_type") or api_profile.get("irrigation") or "Rainfed"),
                 }
                 crop = str(model.recommend_crop(crop_features)).lower()
         except Exception as e:
             logger.warning(f"Crop recommendation failed, defaulting to empty: {e}")
             crop = ""
+
 
     mapped_profile = {
         "income":       income,

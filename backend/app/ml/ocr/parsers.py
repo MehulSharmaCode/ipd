@@ -24,15 +24,6 @@ logger = logging.getLogger(__name__)
 # Shared OCR correction helpers
 # ──────────────────────────────────────────────────────────────
 
-# Common OCR character confusions in Indian ID cards
-_OCR_CHAR_FIXES = str.maketrans({
-    "|": "I",
-    "l": "I",     # lowercase L → I (in all-caps context, handled after)
-    "0": "O",     # only where applicable (applied selectively in parsers)
-    "\u2019": "'",  # curly apostrophe → straight
-})
-
-
 def _clean_text(text: str) -> str:
     """Normalize whitespace and remove non-printable characters."""
     # Replace multiple spaces / tabs with single space
@@ -42,6 +33,25 @@ def _clean_text(text: str) -> str:
     # Collapse multiple blank lines
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
+
+
+def _apply_ocr_fixes_for_pan(text: str) -> str:
+    """
+    Apply targeted OCR character substitutions for PAN card text.
+
+    Common OCR misreads on Indian ID cards:
+      | → I   (pipe confused with I)
+      O → 0   (letter O confused with digit 0) — BUT only in digit positions
+      0 → O   (digit 0 confused with letter O) — BUT only in letter positions
+      l → I   (lowercase l confused with I)
+
+    Strategy: instead of blanket replace (which corrupts valid characters),
+    we clean the text and then use the PAN regex with character-class flexibility.
+    """
+    # Normalize common OCR noise characters
+    text = text.replace("|", "I")
+    text = text.replace("\u2018", "'").replace("\u2019", "'")  # curly apostrophes
+    return text
 
 
 def _extract_name_from_lines(lines: list[str], skip_keywords: set[str]) -> Optional[str]:
@@ -142,6 +152,16 @@ class PANParser:
     """
     Extracts structured fields from PAN card OCR text.
     PAN format: 5 letters + 4 digits + 1 letter (e.g., ABCDE1234F)
+
+    ROOT CAUSE FIX for PAN number not being extracted:
+    1. The old regex \b([A-Z]{5}[0-9]{4}[A-Z])\b fails when OCR inserts spaces
+       INSIDE the PAN token (e.g., "ABCDE 1234F" or "ABC DE1234F").
+       This is a very common Tesseract output artifact for dense text regions.
+    2. The old regex also had no fallback for common OCR confusions like:
+       - digit 0 ↔ letter O in mixed alphanumeric strings
+       - lowercase l ↔ uppercase I
+    3. A multi-strategy approach: try exact match first, then space-tolerant,
+       then with OCR character correction, then reconstruct from lines.
     """
 
     _SKIP_KEYWORDS = {
@@ -150,25 +170,128 @@ class PANParser:
         "NAME", "PAN", "CARD", "GOVT",
     }
 
-    # Strict PAN regex: AAAAA9999A
-    _PAN_RE = re.compile(r"\b([A-Z]{5}[0-9]{4}[A-Z])\b")
+    # Strategy 1: Strict PAN regex — no spaces allowed (best case)
+    _PAN_STRICT_RE = re.compile(r"\b([A-Z]{5}[0-9]{4}[A-Z])\b")
+
+    # Strategy 2: Space-tolerant — OCR sometimes splits PAN into segments
+    # Matches patterns like "ABCDE 1234 F" or "ABCDE1234 F" or "ABC DE1234F"
+    _PAN_SPACED_RE = re.compile(
+        r"\b([A-Z]{3,5})\s*([A-Z]{0,2})\s*([0-9]{4})\s*([A-Z])\b"
+    )
+
+    # Strategy 3: Very permissive — allows common OCR char confusions
+    # 0↔O and l↔I and 1↔I are common in scanned PAN cards
+    _PAN_FUZZY_RE = re.compile(
+        r"\b([A-Z0-9]{5}[0-9OIl]{4}[A-Z0-9])\b"
+    )
 
     # DOB on PAN: dd/mm/yyyy
     _DOB_RE = re.compile(r"\b(\d{2})[/\-](\d{2})[/\-](\d{4})\b")
 
+    def _try_extract_pan(self, text: str) -> Optional[str]:
+        """
+        Multi-strategy PAN extraction. Returns the extracted PAN string or None.
+        Strategies are tried in order from most strict to most permissive.
+        """
+        upper = text.upper()
+
+        # Strategy 1: Strict match (ideal case — clean OCR)
+        m = self._PAN_STRICT_RE.search(upper)
+        if m:
+            logger.debug(f"PANParser: Strategy 1 (strict) matched")
+            return m.group(1)
+
+        # Strategy 2: Space-tolerant match
+        # Reconstruct from groups, collapse spaces, validate
+        m = self._PAN_SPACED_RE.search(upper)
+        if m:
+            # Reconstruct by joining all groups and removing spaces
+            candidate = "".join(g for g in m.groups() if g).replace(" ", "")
+            if len(candidate) == 10 and re.match(r"^[A-Z]{5}[0-9]{4}[A-Z]$", candidate):
+                logger.debug(f"PANParser: Strategy 2 (space-tolerant) matched")
+                return candidate
+
+        # Strategy 3: Apply OCR character corrections and try strict match again
+        # Common confusions: 0→O in letter positions, O→0 in digit positions
+        corrected = self._apply_positional_corrections(upper)
+        m = self._PAN_STRICT_RE.search(corrected)
+        if m:
+            logger.debug(f"PANParser: Strategy 3 (OCR-corrected) matched")
+            return m.group(1)
+
+        # Strategy 4: Search line by line — sometimes PAN is on its own line
+        for line in text.splitlines():
+            line = line.strip().upper()
+            # A PAN number line is typically 10 chars, sometimes with spaces
+            compressed = re.sub(r"\s+", "", line)
+            if 10 <= len(compressed) <= 12:
+                # Try to extract 10-char alphanumeric matching PAN pattern
+                m = self._PAN_STRICT_RE.search(compressed)
+                if m:
+                    logger.debug(f"PANParser: Strategy 4 (line-by-line) matched")
+                    return m.group(1)
+                # Try with character corrections
+                corrected_line = self._apply_positional_corrections(compressed)
+                m = self._PAN_STRICT_RE.search(corrected_line)
+                if m:
+                    logger.debug(f"PANParser: Strategy 4+correction matched")
+                    return m.group(1)
+
+        logger.warning("PANParser: All PAN extraction strategies failed — PAN not found in OCR text")
+        return None
+
+    @staticmethod
+    def _apply_positional_corrections(text: str) -> str:
+        """
+        Apply position-aware OCR corrections for PAN format AAAAA9999A:
+        - Positions 0–4: must be letters → replace 0→O, 1→I, l→I
+        - Positions 5–8: must be digits → replace O→0, I→1, l→1
+        - Position 9:    must be a letter → replace 0→O, 1→I
+
+        This handles the most common Tesseract confusions for PAN cards.
+        We search for 10-char blocks matching a relaxed pattern and correct them.
+        """
+        # Find any 10-char alphanumeric token that could be a PAN
+        candidates = re.findall(r"[A-Z0-9lI]{10}", text)
+        corrected = text
+        for cand in candidates:
+            fixed = list(cand)
+            # Positions 0-4: letters only
+            for i in range(5):
+                if fixed[i] == '0':
+                    fixed[i] = 'O'
+                elif fixed[i] in ('1', 'l'):
+                    fixed[i] = 'I'
+            # Positions 5-8: digits only
+            for i in range(5, 9):
+                if fixed[i] == 'O':
+                    fixed[i] = '0'
+                elif fixed[i] in ('I', 'l'):
+                    fixed[i] = '1'
+            # Position 9: letter
+            if fixed[9] == '0':
+                fixed[9] = 'O'
+            elif fixed[9] in ('1', 'l'):
+                fixed[9] = 'I'
+            corrected = corrected.replace(cand, "".join(fixed))
+        return corrected
+
     def extract(self, text: str) -> dict:
         text = _clean_text(text)
-        # PAN text is mostly uppercase on the card
-        upper = text.upper()
+        # Apply OCR noise fixes before processing
+        text = _apply_ocr_fixes_for_pan(text)
         lines = text.splitlines()
+        upper = text.upper()
 
         result = {}
 
-        # 1. PAN Number
-        pan_match = self._PAN_RE.search(upper)
-        if pan_match:
-            result["panNumber"] = pan_match.group(1)
-            logger.debug(f"PANParser: found PAN number (masked: {pan_match.group(1)[:5]}XXXXX)")
+        # 1. PAN Number — multi-strategy extraction
+        pan_number = self._try_extract_pan(text)
+        if pan_number:
+            result["panNumber"] = pan_number
+            logger.debug(f"PANParser: extracted PAN (masked: {pan_number[:5]}XXXXX)")
+        else:
+            logger.warning("PANParser: PAN number not found — check image quality")
 
         # 2. DOB
         dob_match = self._DOB_RE.search(text)
