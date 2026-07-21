@@ -1,4 +1,5 @@
 # backend/app/api/farmers.py
+import logging
 from fastapi import APIRouter, HTTPException, Depends
 from bson import ObjectId
 from typing import List
@@ -11,6 +12,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from pydantic import BaseModel
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Farmers"])
 
 # Crop Recommender instance (Mehul-Community-Feature)
@@ -22,7 +24,7 @@ def get_crop_recommender() -> CropRecommender:
         try:
             _crop_recommender = CropRecommender()
         except Exception as e:
-            print(f"⚠️ Could not load CropRecommender: {e}")
+            logger.error(f"Could not load CropRecommender: {e}")
     return _crop_recommender
 
 
@@ -123,17 +125,17 @@ async def get_my_profile(current_user: dict = Depends(get_current_user)):
         farmer["recommended_bundles"] = recommendations.get("bundles", [])
         farmer["ineligible_schemes"] = recommendations.get("ineligible", [])
     except Exception as e:
-        print(f"⚠️ Recommendation Error: {str(e)}")
+        logger.warning(f"Recommendation service error: {e}")
         farmer["recommended_schemes"] = []
         farmer["recommended_bundles"] = []
         farmer["ineligible_schemes"] = []
-        
+
     try:
         farmer["predictive_alerts"] = PredictiveAlertService.generate_alerts(farmer)
     except Exception as e:
-        print(f"⚠️ Alert Generation Error: {str(e)}")
+        logger.warning(f"Alert generation error: {e}")
         farmer["predictive_alerts"] = []
-        
+
     return farmer
 
 @router.put("/me", response_model=FarmerResponse)
@@ -157,26 +159,28 @@ async def update_my_profile(profile_data: FarmerProfile, current_user: dict = De
         )
     
     updated_farmer = await db["farmers"].find_one({"_id": ObjectId(current_user["_id"])})
+    if not updated_farmer:
+        raise HTTPException(status_code=404, detail="Farmer profile not found.")
     updated_farmer["_id"] = str(updated_farmer["_id"])
-    
+
     try:
         recommendations = RecommendationService.get_recommendations(updated_farmer)
-        print(f"📊 Profile Update: Found eligible schemes for {updated_farmer['full_name']}")
+        logger.info(f"Profile updated. Scheme recommendations refreshed.")
         updated_farmer["recommended_schemes"] = recommendations.get("eligible", [])
         updated_farmer["recommended_bundles"] = recommendations.get("bundles", [])
         updated_farmer["ineligible_schemes"] = recommendations.get("ineligible", [])
     except Exception as e:
-        print(f"⚠️ Recommendation Error: {str(e)}")
+        logger.warning(f"Recommendation service error on profile update: {e}")
         updated_farmer["recommended_schemes"] = []
         updated_farmer["recommended_bundles"] = []
         updated_farmer["ineligible_schemes"] = []
-        
+
     try:
         updated_farmer["predictive_alerts"] = PredictiveAlertService.generate_alerts(updated_farmer)
     except Exception as e:
-        print(f"⚠️ Alert Generation Error: {str(e)}")
+        logger.warning(f"Alert generation error on profile update: {e}")
         updated_farmer["predictive_alerts"] = []
-        
+
     return updated_farmer
 
 # =========================

@@ -11,6 +11,7 @@ All mapped values are suggestions; users can edit everything before submission.
 """
 
 import logging
+from datetime import datetime
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -31,13 +32,12 @@ def _normalize_gender(gender: Optional[str]) -> Optional[str]:
 
 
 def _parse_year_to_age(birth_year: Optional[str]) -> Optional[int]:
-    """Estimate age from birth year (current year is approximate)."""
+    """Estimate age from birth year using the current calendar year."""
     if not birth_year:
         return None
     try:
         year = int(birth_year)
-        # Use 2025 as approximate current year for age estimation
-        age = 2025 - year
+        age = datetime.now().year - year
         if 5 <= age <= 120:
             return age
     except (ValueError, TypeError):

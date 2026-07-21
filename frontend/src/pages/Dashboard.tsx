@@ -212,7 +212,6 @@ export default function Dashboard() {
         });
         toast.dismiss();
         toast.success(`Policy ingested: ${Object.keys(res.data.extracted_rules || {}).length} rules extracted`);
-        console.log("Extracted Rules:", res.data.extracted_rules);
       } else {
         docData.append('doc_type', uploadType);
         const res = await api.post('/upload', docData, {
@@ -280,6 +279,7 @@ export default function Dashboard() {
             className="mt-4 border-emerald-800 dark:border-slate-700 bg-transparent text-emerald-400 dark:text-slate-300 hover:bg-emerald-900 dark:hover:bg-slate-800 hover:text-emerald-300 dark:hover:text-white transition-all"
             onClick={() => {
               localStorage.removeItem('access_token');
+              toast.success('You have been logged out successfully.');
               navigate('/');
             }}
           >

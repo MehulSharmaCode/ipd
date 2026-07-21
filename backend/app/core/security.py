@@ -1,4 +1,5 @@
 # backend/app/core/security.py
+import logging
 from datetime import datetime, timedelta, timezone
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -7,6 +8,8 @@ import bcrypt
 import jwt
 from app.core.config import settings
 from app.core.database import get_db
+
+logger = logging.getLogger(__name__)
 
 # This tells FastAPI where our login route is
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -33,41 +36,37 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
-# --- NEW: Get Current Logged-In User ---
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
-    # DEBUG: Print the received token
-    print(f"🕵️ DEBUG: get_current_user received token: {token[:20]}...{token[-10:]}" if token else "🕵️ DEBUG: get_current_user received EMPTY token!")
 
     try:
         # Decode the token to get the user ID (sub)
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id: str = payload.get("sub")
-        print(f"🕵️ DEBUG: Decoded payload: {payload}, user_id: {user_id}")
+        logger.debug("Token decoded successfully.")
         if user_id is None:
-            print("🕵️ DEBUG: Token missing 'sub' claim!")
+            logger.warning("Token missing 'sub' claim.")
             raise credentials_exception
     except jwt.PyJWTError as e:
-        print(f"🕵️ DEBUG: PyJWTError decoding token: {e}")
+        logger.warning(f"Token validation failed: {type(e).__name__}")
         raise credentials_exception
-        
+
     db = get_db()
     # Find the user in the database
     from bson import ObjectId
     try:
         user = await db["farmers"].find_one({"_id": ObjectId(user_id)})
     except Exception as e:
-        print(f"🕵️ DEBUG: Error parsing ObjectId '{user_id}': {e}")
+        logger.warning(f"Invalid ObjectId format in token: {type(e).__name__}")
         raise credentials_exception
 
     if user is None:
-        print(f"🕵️ DEBUG: User not found in DB for ID {user_id}!")
+        logger.warning("Authenticated user not found in database.")
         raise credentials_exception
-        
+
     user["_id"] = str(user["_id"])
     return user

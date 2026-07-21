@@ -10,6 +10,7 @@ Validators follow a consistent pattern:
 
 import re
 import logging
+from datetime import datetime
 from typing import Optional, Tuple
 from dataclasses import dataclass, field
 
@@ -59,18 +60,19 @@ def validate_name(value: str) -> Tuple[bool, Optional[str]]:
 def validate_dob(value: str) -> Tuple[bool, Optional[str]]:
     """
     DOB: accepts dd/mm/yyyy or dd-mm-yyyy.
-    Does basic range checks (year 1900–2024).
+    Does basic range checks (year 1900–current year).
     """
     match = re.match(r"^(\d{2})[/\-](\d{2})[/\-](\d{4})$", value)
     if not match:
         return False, f"DOB '{value}' is not in dd/mm/yyyy format."
     day, month, year = int(match.group(1)), int(match.group(2)), int(match.group(3))
+    current_year = datetime.now().year
     if not (1 <= day <= 31):
         return False, f"Invalid day: {day}."
     if not (1 <= month <= 12):
         return False, f"Invalid month: {month}."
-    if not (1900 <= year <= 2024):
-        return False, f"Year {year} is out of expected range (1900–2024)."
+    if not (1900 <= year <= current_year):
+        return False, f"Year {year} is out of expected range (1900–{current_year})."
     return True, None
 
 

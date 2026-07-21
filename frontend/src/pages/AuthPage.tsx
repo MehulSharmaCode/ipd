@@ -28,24 +28,20 @@ export default function AuthPage() {
     setLoading(true);
     try {
       if (isLogin) {
-        console.log("🔍 FRONTEND: Attempting login for:", formData.email);
         const loginData = new FormData();
         loginData.append('username', formData.email);
         loginData.append('password', formData.password);
         
         const res = await api.post('/auth/login', loginData);
-        console.log("✅ FRONTEND: Login response received:", res.status);
         
         localStorage.setItem('access_token', res.data.access_token);
         toast.success(t('auth.toast_login_success'));
         window.location.href = '/dashboard';
       } else {
-        console.log("🔍 FRONTEND: Attempting signup for:", formData.email);
         await api.post('/auth/signup', formData);
         toast.success(t('auth.toast_register_success'));
         
         // Auto-login after successful signup
-        console.log("🔍 FRONTEND: Auto-logging in for:", formData.email);
         const loginData = new FormData();
         loginData.append('username', formData.email);
         loginData.append('password', formData.password);

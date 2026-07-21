@@ -1,4 +1,5 @@
 # backend/app/api/auth.py
+import logging
 from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
@@ -8,6 +9,7 @@ from app.core.database import get_db
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post("/signup", response_model=FarmerResponse, status_code=status.HTTP_201_CREATED)
@@ -41,6 +43,7 @@ async def signup(user_data: FarmerSignup):
     # 5. Fetch and return
     new_user = await db["farmers"].find_one({"_id": result.inserted_id})
     new_user["_id"] = str(new_user["_id"])
+    logger.info("New farmer registered successfully.")
     return new_user
 
 @router.post("/login", response_model=Token)
@@ -50,29 +53,28 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     # In FastAPI OAuth2, the 'username' field will now hold our EMAIL
     # Normalize to lowercase and strip whitespace for case-insensitive lookup
     email_normalized = form_data.username.lower().strip()
-    print(f"🔍 DEBUG: Login attempt for email: '{email_normalized}'")
+    logger.debug("Login attempt received.")
     
     user = await db["farmers"].find_one({"email": email_normalized})
     
     if not user:
-        print(f"❌ DEBUG: User not found in database: '{email_normalized}'")
+        logger.warning("Login failed: email not found.")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    print(f"✅ DEBUG: User found. Verifying password...")
+    logger.debug("User located. Verifying password.")
     if not verify_password(form_data.password, user["hashed_password"]):
-        print(f"❌ DEBUG: Password verification failed for: '{email_normalized}'")
+        logger.warning("Login failed: password mismatch.")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    print(f"🚀 DEBUG: Login successful for: '{email_normalized}'")
-        
+    logger.info("Login successful.")
     # Generate JWT Token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(

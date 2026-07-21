@@ -9,13 +9,7 @@ const api = axios.create({
 // Add a request interceptor to attach the JWT token
 api.interceptors.request.use(
   (config) => {
-    // Get the token from local storage
     const token = localStorage.getItem("access_token");
-    
-    // DEBUG: Ensure token is attaching!
-    console.log("🛠️ Frontend API Interceptor: attaching token length =", token ? token.length : 0);
-
-    // If the token exists, attach it to the Authorization header
     if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;
     }
