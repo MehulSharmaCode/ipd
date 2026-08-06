@@ -1,0 +1,28 @@
+{
+  "document_type": "7_12",
+  "owner_name": "नारायण भानुदास सावंत",
+  "survey_number": "२७७",
+  "gat_number": "२७७",
+  "village": "निरामपूर",
+  "taluka": "सांगोला",
+  "district": null,
+  "land_area": "6 हेक्टर 11 आर",
+  "current_crop": "बाजरी, मका",
+  "irrigation": "rainfed",
+  "soil_type": null,
+  "ownership_type": "joint",
+  "additional_info": {
+    "co_owners": [
+      "ज्योतिराम भानुदास सावंत",
+      "बाळासो भानुदास सावंत",
+      "वैशाली किशोर तमखडे",
+      "किशोर मारुती तमखडे",
+      "आशा किशोर तमखडे"
+    ],
+    "mutation_entries": null,
+    "hissa_number": null,
+    "pot_hissa": null,
+    "land_use": "agricultural",
+    "season": "kharif"
+  }
+}

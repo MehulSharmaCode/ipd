@@ -45,7 +45,8 @@ def _deskew(gray: np.ndarray) -> np.ndarray:
 
         angles = []
         for line in lines:
-            x1, y1, x2, y2 = line[0]
+            # ravel() handles both (1,4) and (4,) shapes from different OpenCV versions
+            x1, y1, x2, y2 = [int(v) for v in line.ravel()[:4]]
             if x2 - x1 != 0:
                 angle = np.degrees(np.arctan2(y2 - y1, x2 - x1))
                 angles.append(angle)

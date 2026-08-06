@@ -27,6 +27,9 @@ torchvision
 python-multipart
 python-dotenv
 
+# Gemini AI (PoC — document understanding)
+google-genai
+
 passlib
 bcrypt
 PyJWT

@@ -137,9 +137,7 @@ async def upload_document(
         # DB update failure is non-fatal — we still return OCR results
         logger.error(f"DB update failed for user {current_user['_id']}: {e}")
 
-    # ── Build response ────────────────────────────────────────────────
-    # Always return success=True if the file was saved (OCR is best-effort)
-    return {
+    response = {
         "status": "success",
         "filename": unique_filename,
         "documentType": result_dict["documentType"],
@@ -148,6 +146,10 @@ async def upload_document(
         "validation": result_dict["validation"],
         "profileSuggestions": result_dict["profileSuggestions"],
         "processingTimeMs": result_dict["processingTimeMs"],
-        # rawTextSnippet only in debug — do not expose in production
-        # "rawTextSnippet": result_dict["rawTextSnippet"],
     }
+    # Expose rawTextSnippet only for low-confidence results so developers
+    # can see what Tesseract actually extracted when OCR fails.
+    if result_dict.get("confidence", 100) < 50:
+        response["rawTextSnippet"] = result_dict.get("rawTextSnippet", "")
+
+    return response

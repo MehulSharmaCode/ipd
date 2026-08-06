@@ -16,7 +16,15 @@ The pipeline.py will route to the correct parser via classification.
 
 import re
 import logging
+from datetime import datetime
 from typing import Optional
+
+# Verhoeff checksum for Aadhaar validation (imported from utils)
+try:
+    from app.ml.ocr.utils import validate_aadhar as _verhoeff_ok
+except ImportError:
+    def _verhoeff_ok(n: str) -> bool:  # type: ignore[misc]
+        return len(n) == 12 and n.isdigit() and n[0] not in ('0', '1')
 
 logger = logging.getLogger(__name__)
 
@@ -110,25 +118,80 @@ class AadhaarParser:
         text = _clean_text(text)
         upper = text.upper()
         lines = text.splitlines()
+        current_year = datetime.now().year
 
         result = {}
 
-        # 1. Aadhaar Number
-        match = self._AADHAAR_RE.search(upper)
-        if match:
-            raw_number = "".join(match.groups())
-            result["aadhaarNumber"] = f"{raw_number[:4]} {raw_number[4:8]} {raw_number[8:]}"
-            logger.debug(f"AadhaarParser: found number ending in ...{raw_number[-4:]}")
+        # 1. Aadhaar Number — two-pass extraction strategy:
+        #    Pass 1: scan each line individually (most reliable — Aadhaar is on its own line)
+        #    Pass 2: full-text findall fallback (catches split-line cases)
+        #    Filters: reject year-prefix (1900-2099), reject 0/1 start, prefer Verhoeff-valid
+        chosen_number = None
+        all_candidates = []
 
-        # 2. Date of Birth
+        # Pass 1: line-by-line (highest precision)
+        # A line containing ONLY a 12-digit number (possibly spaced) is very likely the Aadhaar number
+        _LINE_AADHAAR_RE = re.compile(r"^\s*([\d\s\-]{12,14})\s*$")
+        for line in lines:
+            m = _LINE_AADHAAR_RE.match(line)
+            if m:
+                digits_only = re.sub(r"[\s\-]", "", m.group(1))
+                if len(digits_only) == 12:
+                    all_candidates.insert(0, digits_only)  # Prioritize line matches
+
+        # Pass 2: full-text regex (catches non-isolated numbers)
+        for groups in self._AADHAAR_RE.findall(upper):
+            all_candidates.append("".join(groups))
+
+        for raw_number in all_candidates:
+            if not raw_number.isdigit() or len(raw_number) != 12:
+                continue
+            # Skip if starts with 0 or 1 (invalid per UIDAI spec)
+            if raw_number[0] in ('0', '1'):
+                logger.debug(f"AadhaarParser: skipping candidate {raw_number[:4]}xxxx — starts with 0/1")
+                continue
+            # Skip year-like prefixes (1900-2099) — these are usually dates embedded in text
+            prefix = int(raw_number[:4])
+            if 1900 <= prefix <= 2099:
+                logger.debug(f"AadhaarParser: skipping candidate {raw_number[:4]}xxxx — year-like prefix")
+                continue
+            # Prefer Verhoeff-valid number; else use first non-year candidate as fallback
+            if _verhoeff_ok(raw_number):
+                chosen_number = raw_number
+                logger.debug(f"AadhaarParser: Verhoeff-valid candidate: ...{raw_number[-4:]}")
+                break
+            elif chosen_number is None:
+                chosen_number = raw_number
+
+        if chosen_number:
+            result["aadhaarNumber"] = f"{chosen_number[:4]} {chosen_number[4:8]} {chosen_number[8:]}"
+            logger.debug(f"AadhaarParser: found number ending in ...{chosen_number[-4:]}")
+
+
+        # 2. Date of Birth — pre-validate before storing
         dob_match = self._DOB_FULL_RE.search(text)
         if dob_match:
-            result["dob"] = f"{dob_match.group(1)}/{dob_match.group(2)}/{dob_match.group(3)}"
-            result["birthYear"] = dob_match.group(3)
+            day = int(dob_match.group(1))
+            month = int(dob_match.group(2))
+            year = int(dob_match.group(3))
+            if 1 <= day <= 31 and 1 <= month <= 12 and 1900 <= year <= current_year:
+                result["dob"] = f"{dob_match.group(1)}/{dob_match.group(2)}/{dob_match.group(3)}"
+                result["birthYear"] = dob_match.group(3)
+            else:
+                logger.debug(
+                    f"AadhaarParser: rejected invalid DOB {dob_match.group()} "
+                    f"(day={day}, month={month}, year={year})"
+                )
+                # Still try to get a birth year from the year part if it's sane
+                if 1900 <= year <= current_year:
+                    result["birthYear"] = str(year)
         else:
+            # Fallback: look for a standalone birth year
             year_match = self._DOB_YEAR_RE.search(upper)
             if year_match:
-                result["birthYear"] = year_match.group()
+                yr = int(year_match.group())
+                if 1900 <= yr <= current_year:
+                    result["birthYear"] = year_match.group()
 
         # 3. Gender
         gender_match = self._GENDER_RE.search(upper)
