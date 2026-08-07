@@ -33,16 +33,23 @@ DOCUMENT_SIGNATURES = [
         "keywords": [
             "GOVERNMENT OF INDIA",
             "UNIQUE IDENTIFICATION",
+            "AUTHORITY OF INDIA",
             "UIDAI",
             "YOUR AADHAAR",
+            "AADHAAR",
+            "BHARAT",
             "DOB",
             "DATE OF BIRTH",
             "YEAR OF BIRTH",
             "MALE",
             "FEMALE",
             "TRANSGENDER",
+            "ENROLMENT",
+            "S/O",
+            "D/O",
+            "W/O",
         ],
-        "min_hits": 2,
+        "min_hits": 1,
     },
     {
         "type": "AADHAAR_BACK",
@@ -53,8 +60,15 @@ DOCUMENT_SIGNATURES = [
             "ADDRESS",
             "MOBILE",
             "PIN",
+            "PINCODE",
+            "POST",
+            "DISTRICT",
+            "STATE",
+            "C/O",
+            "S/O",
+            "W/O",
         ],
-        "min_hits": 2,
+        "min_hits": 1,
     },
     {
         "type": "PAN",
@@ -65,8 +79,33 @@ DOCUMENT_SIGNATURES = [
             "GOVERNMENT OF INDIA",
             "FATHER",
             "INCOME TAX",
+            "PERMANENT ACCOUNT",
+            "SIGNATURE",
+            "PAN CARD",
         ],
-        "min_hits": 2,
+        "min_hits": 1,
+    },
+    {
+        "type": "SATBARA_7_12",
+        "keywords": [
+            "7/12",
+            "SATBARA",
+            "MAHABHUMI",
+            "GAT NO",
+            "GAT",
+            "SURVEY NO",
+            "SURVEY",
+            "VILLAGE",
+            "TALUKA",
+            "DISTRICT",
+            "HECTARE",
+            "BHUMAAPAPAN",
+            "RECORD OF RIGHTS",
+            "KHATA",
+            "धिकार अभिलेख",
+            "सातबारा",
+        ],
+        "min_hits": 1,
     },
 ]
 
@@ -91,6 +130,7 @@ def classify(raw_text: str) -> ClassificationResult:
     normalized = raw_text.upper()
     best_match = None
     best_hits = 0
+    best_keywords = []
 
     for sig in DOCUMENT_SIGNATURES:
         matched = [kw for kw in sig["keywords"] if kw in normalized]
@@ -111,7 +151,7 @@ def classify(raw_text: str) -> ClassificationResult:
 
     # Confidence: how many of the possible keywords were found
     total_keywords = len(best_match["keywords"])
-    confidence = min(best_hits / total_keywords, 1.0)
+    confidence = min(best_hits / max(total_keywords, 1), 1.0)
 
     logger.info(
         f"Document classified as '{best_match['type']}' "

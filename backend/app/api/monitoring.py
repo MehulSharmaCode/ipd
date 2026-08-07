@@ -3,8 +3,10 @@ from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile, File
 from typing import List, Dict
 
 from app.services.scheme_monitor import SchemeMonitor
+from app.services.crawler.scheduler import MySchemeIngestionScheduler
 from app.ml.policy_engine.policy_ingestor import PolicyIngestor
 from app.core.security import get_current_user
+from app.core.database import get_db
 from app.ml.ocr.ocr_service import verify_tesseract
 from app.ml.ocr.config import get_config_summary
 
@@ -33,19 +35,62 @@ async def get_system_status():
 @router.post("/refresh-schemes")
 async def refresh_schemes(background_tasks: BackgroundTasks):
     """
-    Triggers a background process to scrape and check for new schemes.
-    Returns immediately, while the scraping happens asynchronously.
+    Triggers a background myScheme.gov.in ingestion cycle.
+    Returns immediately, while the ingestion happens asynchronously.
     """
-    # In a full app, this would save to the DB. Here we just trigger the print/scrape.
-    def background_scrape():
-        print("🌍 Background Task: Starting proactive scheme monitor scrape...")
-        data = SchemeMonitor.scrape_latest_schemes()
-        print(f"🌍 Background Task: Found {len(data)} scheme updates.")
-        # db.scheme_updates.insert_many(data) # Example DB persistence
+    async def background_ingest():
+        print("🌍 Background Task: Starting myScheme.gov.in ingestion cycle...")
+        scheduler = MySchemeIngestionScheduler()
+        stats = await scheduler.run_ingestion_cycle(
+            category_filter=None, limit=None
+        )
+        print(
+            f"🌍 Background Task: Ingestion complete — "
+            f"{stats.get('new_schemes', 0)} new, "
+            f"{stats.get('updated_schemes', 0)} updated, "
+            f"{stats.get('errors', 0)} errors"
+        )
 
-    background_tasks.add_task(background_scrape)
+    background_tasks.add_task(background_ingest)
     
-    return {"message": "Scheme refresh initiated in the background."}
+    return {"message": "myScheme ingestion cycle initiated in the background."}
+
+
+@router.get("/ingestion-status")
+async def get_ingestion_status():
+    """
+    Returns the status of the most recent myScheme ingestion run,
+    plus aggregate scheme counts from the database.
+    """
+    db = get_db()
+    if db is None:
+        return {"status": "error", "detail": "Database not available"}
+
+    # Most recent ingestion run log
+    last_run = await db["scheme_ingestion_log"].find_one(
+        {"type": "ingestion_run", "source": "myscheme.gov.in"},
+        sort=[("scraped_at", -1)]
+    )
+    if last_run:
+        last_run["_id"] = str(last_run["_id"])
+
+    # Scheme counts by status
+    total_schemes = await db["schemes"].count_documents({})
+    published_count = await db["schemes"].count_documents({"status": "published"})
+    pending_count = await db["schemes"].count_documents({"status": "pending_review"})
+    myscheme_count = await db["schemes"].count_documents({"myscheme_slug": {"$exists": True, "$ne": None}})
+
+    return {
+        "status": "ok",
+        "last_ingestion_run": last_run,
+        "scheme_counts": {
+            "total": total_schemes,
+            "published": published_count,
+            "pending_review": pending_count,
+            "from_myscheme": myscheme_count,
+        }
+    }
+
 
 @router.post("/test/policy-ingest")
 async def test_policy_ingest(

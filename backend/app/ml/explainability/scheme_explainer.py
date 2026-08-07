@@ -64,8 +64,34 @@ class SchemeExplainer:
             
         reasons = []
         for r in passed_rules:
-            reasons.append(SchemeExplainer._translate_rule(r, is_failed=False))
-        return reasons
+            field = r.get("field", "")
+            value = r.get("value", "")
+            
+            field_names = {
+                "income": "Annual Income",
+                "land_size": "Land Size",
+                "farmer_type": "Farmer Category",
+                "crop": "Crop Type",
+                "irrigation": "Irrigation Status",
+                "state": "State",
+                "gender": "Gender",
+                "category": "Category"
+            }
+            pretty_field = field_names.get(field, field.replace("_", " ").title())
+            
+            if isinstance(value, list):
+                val_str = ", ".join(str(v).title() for v in value)
+            else:
+                val_str = str(value).title()
+                
+            if field == "income" and isinstance(value, (int, float)):
+                val_str = f"₹{value:,}"
+                
+            reasons.append(f"{pretty_field}: {val_str}")
+            
+        if reasons:
+            return [f"Matches: {', '.join(reasons)}"]
+        return ["You met all general eligibility criteria for this scheme."]
 
     @staticmethod
     def explain_ineligible(failed_rules: list) -> list:
@@ -75,5 +101,30 @@ class SchemeExplainer:
             
         reasons = []
         for r in failed_rules:
-            reasons.append(SchemeExplainer._translate_rule(r, is_failed=True))
-        return reasons
+            field = r.get("field", "")
+            value = r.get("value", "")
+            farmer_val = r.get("farmer_value", "Unknown")
+            
+            field_names = {
+                "income": "Annual Income",
+                "land_size": "Land Size",
+                "farmer_type": "Farmer Category",
+                "crop": "Crop Type",
+                "irrigation": "Irrigation Status",
+                "state": "State",
+                "gender": "Gender",
+                "category": "Category"
+            }
+            pretty_field = field_names.get(field, field.replace("_", " ").title())
+            
+            if isinstance(value, list):
+                req_val = ", ".join(str(v).title() for v in value)
+            else:
+                req_val = str(value).title()
+            
+            if field == "income" and isinstance(value, (int, float)):
+                req_val = f"₹{value:,}"
+                
+            reasons.append(f"Requires {pretty_field} = {req_val}, but your profile has {str(farmer_val).title()}")
+            
+        return ["Not eligible: " + "; ".join(reasons)]

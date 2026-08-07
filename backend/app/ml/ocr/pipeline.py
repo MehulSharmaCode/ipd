@@ -132,24 +132,39 @@ def process(file_path: str, expected_doc_type: Optional[str] = None) -> OCRPipel
 
     # ── Stage 3: Document Classification ─────────────────────────────
     classification: ClassificationResult = classify(ocr_result.text)
+    doc_type_used = classification.document_type
 
-    # Early mismatch warning (do not block — user may still accept)
+    # Early mismatch warning or fallback if UNKNOWN
     if expected_doc_type:
-        hint_upper = expected_doc_type.upper()
+        hint_upper = expected_doc_type.upper().strip()
         actual_upper = classification.document_type.upper()
-        # Map user hint (e.g. "aadhar") to our canonical types
-        hint_is_aadhaar = "AADH" in hint_upper or "AADHAAR" in hint_upper
+
+        hint_is_aadhaar = any(k in hint_upper for k in ["AADH", "AADHAAR", "ADHAR"])
         hint_is_pan = "PAN" in hint_upper
+        hint_is_satbara = any(k in hint_upper for k in ["SATBARA", "7/12", "7_12", "LAND"])
+
         actual_is_aadhaar = "AADHAAR" in actual_upper
         actual_is_pan = "PAN" in actual_upper
+        actual_is_satbara = "SATBARA" in actual_upper
 
-        if (hint_is_aadhaar and not actual_is_aadhaar) or (hint_is_pan and not actual_is_pan):
+        # Fallback handling: if classification was UNKNOWN, rely on user's hint
+        if classification.document_type == "UNKNOWN":
+            if hint_is_aadhaar:
+                doc_type_used = "AADHAAR_FRONT"
+                logger.info(f"Classification UNKNOWN — using hint fallback: '{doc_type_used}'")
+            elif hint_is_pan:
+                doc_type_used = "PAN"
+                logger.info(f"Classification UNKNOWN — using hint fallback: '{doc_type_used}'")
+            elif hint_is_satbara:
+                doc_type_used = "SATBARA_7_12"
+                logger.info(f"Classification UNKNOWN — using hint fallback: '{doc_type_used}'")
+        elif (hint_is_aadhaar and not actual_is_aadhaar) or (hint_is_pan and not actual_is_pan) or (hint_is_satbara and not actual_is_satbara):
             logger.warning(
-                f"Document type mismatch: user said '{expected_doc_type}', "
+                f"Document type mismatch: user specified hint '{expected_doc_type}', "
                 f"classified as '{classification.document_type}'"
             )
 
-    if classification.document_type == "UNKNOWN":
+    if doc_type_used == "UNKNOWN":
         total_ms = (time.monotonic() - pipeline_start) * 1000
         return OCRPipelineResult(
             documentType="UNKNOWN",
@@ -157,50 +172,50 @@ def process(file_path: str, expected_doc_type: Optional[str] = None) -> OCRPipel
             validation={
                 "valid": False,
                 "warnings": ["Could not identify the document type. "
-                             "Please ensure the document is an Aadhaar card or PAN card."]
+                             "Please ensure the document is a legible Aadhaar card, PAN card, or 7/12 Satbara."]
             },
             rawTextSnippet=raw_snippet,
             processingTimeMs=total_ms,
         )
 
     # ── Stage 4: Field Extraction ─────────────────────────────────────
-    parser = get_parser(classification.document_type)
+    parser = get_parser(doc_type_used)
     extracted_fields = {}
     if parser:
         try:
             extracted_fields = parser.extract(ocr_result.text)
         except Exception as e:
-            logger.error(f"Parser error for '{classification.document_type}': {e}", exc_info=True)
+            logger.error(f"Parser error for '{doc_type_used}': {e}", exc_info=True)
             extracted_fields = {}
     else:
-        logger.warning(f"No parser for type '{classification.document_type}'")
+        logger.warning(f"No parser for type '{doc_type_used}'")
 
     # ── Stage 5: Validation ───────────────────────────────────────────
     validation_result: ValidationResult = validate_fields(
-        classification.document_type, extracted_fields
+        doc_type_used, extracted_fields
     )
 
     # ── Stage 6: Profile Mapping ──────────────────────────────────────
     profile_suggestions = {}
     try:
-        profile_suggestions = map_to_profile(classification.document_type, extracted_fields)
+        profile_suggestions = map_to_profile(doc_type_used, extracted_fields)
     except Exception as e:
         logger.error(f"Profile mapping error: {e}", exc_info=True)
 
     # ── Stage 7: Build Response ───────────────────────────────────────
     total_ms = (time.monotonic() - pipeline_start) * 1000
-    # Blend OCR confidence (0–100) with classification confidence (0–1)
-    blended_confidence = (ocr_result.confidence * 0.6) + (classification.confidence * 100 * 0.4)
+    class_conf = classification.confidence if classification.document_type != "UNKNOWN" else 0.7
+    blended_confidence = (ocr_result.confidence * 0.6) + (class_conf * 100 * 0.4)
 
     logger.info(
-        f"Pipeline DONE: type={classification.document_type}, "
+        f"Pipeline DONE: type={doc_type_used}, "
         f"fields={list(extracted_fields.keys())}, "
         f"valid={validation_result.valid}, "
         f"total_ms={total_ms:.0f}"
     )
 
     return OCRPipelineResult(
-        documentType=classification.document_type,
+        documentType=doc_type_used,
         confidence=blended_confidence,
         fields=extracted_fields,
         validation={

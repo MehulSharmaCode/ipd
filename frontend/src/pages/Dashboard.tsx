@@ -33,7 +33,8 @@ import {
   LogOut,
   TrendingUp,
   Globe,
-  Mic
+  Mic,
+  Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslationText } from '@/hooks/useTranslationText';
@@ -47,6 +48,7 @@ export default function Dashboard() {
   const [saving, setSaving] = useState(false);
   const [monitoredSchemes, setMonitoredSchemes] = useState<any[]>([]);
   const [selectedScheme, setSelectedScheme] = useState<any>(null);
+  const [newSchemesCount, setNewSchemesCount] = useState<number>(0);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const schemesRef = useRef<HTMLDivElement>(null);
@@ -147,9 +149,21 @@ export default function Dashboard() {
     }
   };
 
+  const fetchNewSchemesSummary = async () => {
+    try {
+      const res = await api.get('/farmers/me/new-schemes-summary');
+      if (res.data && res.data.status === 'success') {
+        setNewSchemesCount(res.data.new_schemes_since_last_visit || 0);
+      }
+    } catch (err) {
+      console.error("Failed to fetch new schemes summary", err);
+    }
+  };
+
   useEffect(() => {
     fetchProfile();
     fetchMonitoredSchemes();
+    fetchNewSchemesSummary();
   }, [navigate]);
 
   // After registration: auto-scroll to schemes section
@@ -307,6 +321,34 @@ export default function Dashboard() {
           <div className="absolute bottom-[-10%] left-[-5%] w-96 h-96 bg-teal-500/10 dark:bg-teal-500/5 rounded-full blur-[100px] pointer-events-none" />
 
           <div className="max-w-5xl mx-auto relative z-10">
+            {newSchemesCount > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/20 rounded-xl">
+                    <Sparkles className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm">New Schemes Available!</h4>
+                    <p className="text-xs text-emerald-100">
+                      {newSchemesCount} new eligible scheme(s) matching your profile have appeared since your last visit.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setNewSchemesCount(0)}
+                  className="text-xs font-semibold bg-white text-emerald-800 hover:bg-emerald-50 rounded-xl"
+                >
+                  Dismiss
+                </Button>
+              </motion.div>
+            )}
+
             <AnimatePresence mode="wait">
               {activeTab === 'home' && (
                 <motion.div
@@ -469,9 +511,17 @@ export default function Dashboard() {
                                           )}
                                         </div>
                                       </div>
-                                      <Button variant="ghost" className="rounded-full text-slate-600 dark:text-slate-300 md:group-hover:bg-emerald-600 md:group-hover:text-white transition-all self-end md:self-center shrink-0">
-                                        {t('dashboard.apply')} <ChevronRight className="ml-1 h-4 w-4" />
-                                      </Button>
+                                       <Button
+                                         variant="ghost"
+                                         className="rounded-full text-slate-600 dark:text-slate-300 md:group-hover:bg-emerald-600 md:group-hover:text-white transition-all self-end md:self-center shrink-0"
+                                         onClick={(e) => {
+                                           e.stopPropagation();
+                                           const targetUrl = scheme.source_url || `https://www.myscheme.gov.in/schemes/${scheme.scheme_id?.toString().toLowerCase().replace(/_/g, '-')}`;
+                                           window.open(targetUrl, '_blank', 'noopener,noreferrer');
+                                         }}
+                                       >
+                                         {t('dashboard.apply')} <ChevronRight className="ml-1 h-4 w-4" />
+                                       </Button>
                                     </div>
                                   ))}
                                 </div>
@@ -504,9 +554,17 @@ export default function Dashboard() {
                                     )}
                                   </div>
                                 </div>
-                                <Button variant="ghost" className="rounded-full text-slate-600 dark:text-slate-300 group-hover:bg-emerald-600 group-hover:text-white transition-all">
-                                  {t('dashboard.apply')} <ChevronRight className="ml-1 h-4 w-4" />
-                                </Button>
+                                 <Button
+                                   variant="ghost"
+                                   className="rounded-full text-slate-600 dark:text-slate-300 group-hover:bg-emerald-600 group-hover:text-white transition-all"
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     const targetUrl = scheme.source_url || `https://www.myscheme.gov.in/schemes/${scheme.scheme_id?.toString().toLowerCase().replace(/_/g, '-')}`;
+                                     window.open(targetUrl, '_blank', 'noopener,noreferrer');
+                                   }}
+                                 >
+                                   {t('dashboard.apply')} <ChevronRight className="ml-1 h-4 w-4" />
+                                 </Button>
                               </motion.div>
                             ))
                           ) : (

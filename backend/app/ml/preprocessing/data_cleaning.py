@@ -54,4 +54,12 @@ def clean_farmer_profile(profile: dict) -> dict:
     else:
         cleaned["farmer_type"] = "large"
 
+    # 5. Pass through other fields natively (e.g. gender, category, age)
+    for key, value in profile.items():
+        if key not in cleaned and key not in ["annual_income", "land_size_hectares", "irrigation_type"]:
+            if isinstance(value, str):
+                cleaned[key] = value.strip().lower()
+            else:
+                cleaned[key] = value
+
     return cleaned

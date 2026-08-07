@@ -115,15 +115,33 @@ async def upload_document(
     }
     set_fields: dict = {}
 
-    # Only persist verified ID numbers when validation passed
+    # Only persist verified ID numbers / land details when validation passed
     if ocr_result.validation.get("valid"):
         extracted = ocr_result.fields
+        suggestions = ocr_result.profileSuggestions
+
         if safe_doc_type in {"aadhar", "aadhaar"} and extracted.get("aadhaarNumber"):
-            set_fields["aadhar_number"] = extracted["aadhaarNumber"]
+            clean_aadhar = extracted["aadhaarNumber"].replace(" ", "")
+            set_fields["aadhar_number"] = clean_aadhar
+            set_fields["aadhar_last4"] = clean_aadhar[-4:]
             set_fields["is_aadhar_verified"] = True
+
         elif safe_doc_type == "pan" and extracted.get("panNumber"):
-            set_fields["pan_number"] = extracted["panNumber"]
+            set_fields["pan_number"] = extracted["panNumber"].upper()
             set_fields["is_pan_verified"] = True
+
+        elif safe_doc_type in {"satbara", "satbara_7_12", "7_12", "7/12"}:
+            if suggestions.get("land_size_hectares"):
+                set_fields["land_size_hectares"] = suggestions["land_size_hectares"]
+            if suggestions.get("village"):
+                set_fields["village"] = suggestions["village"]
+            if suggestions.get("taluka"):
+                set_fields["taluka"] = suggestions["taluka"]
+            if suggestions.get("district"):
+                set_fields["district"] = suggestions["district"]
+            if suggestions.get("state"):
+                set_fields["state"] = suggestions["state"]
+            set_fields["is_land_record_verified"] = True
 
     if set_fields:
         db_update["$set"] = set_fields

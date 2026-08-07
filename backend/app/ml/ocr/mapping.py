@@ -111,11 +111,40 @@ def map_pan_to_profile(fields: dict) -> dict:
     return profile_update
 
 
+def map_satbara_to_profile(fields: dict) -> dict:
+    """
+    Map 7/12 Satbara extracted land fields to farmer profile fields.
+    """
+    profile_update = {}
+
+    if fields.get("totalAreaHectares") is not None:
+        profile_update["land_size_hectares"] = fields["totalAreaHectares"]
+
+    if fields.get("village"):
+        profile_update["village"] = fields["village"]
+
+    if fields.get("taluka"):
+        profile_update["taluka"] = fields["taluka"]
+
+    if fields.get("district"):
+        profile_update["district"] = fields["district"]
+
+    if fields.get("state"):
+        profile_update["state"] = fields["state"]
+
+    if fields.get("gatNumber"):
+        profile_update["land_gat_number"] = fields["gatNumber"]
+
+    logger.info(f"Satbara→Profile mapping: {list(profile_update.keys())}")
+    return profile_update
+
+
 # Document-type to mapper function
 _MAPPERS = {
     "AADHAAR_FRONT": map_aadhaar_to_profile,
     "AADHAAR_BACK": map_aadhaar_to_profile,
     "PAN": map_pan_to_profile,
+    "SATBARA_7_12": map_satbara_to_profile,
 }
 
 
@@ -124,7 +153,7 @@ def map_to_profile(document_type: str, fields: dict) -> dict:
     Map extracted OCR fields to farmer profile fields for the given document type.
 
     Args:
-        document_type: Classified document type (e.g., "AADHAAR_FRONT", "PAN").
+        document_type: Classified document type (e.g., "AADHAAR_FRONT", "PAN", "SATBARA_7_12").
         fields: Extracted fields dict from the appropriate parser.
     Returns:
         Dict of profile field suggestions to auto-fill on the frontend form.

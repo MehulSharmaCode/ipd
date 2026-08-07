@@ -150,11 +150,36 @@ def validate_pan_fields(fields: dict) -> ValidationResult:
     return result
 
 
+def validate_satbara_fields(fields: dict) -> ValidationResult:
+    """Validate extracted 7/12 Satbara fields."""
+    result = ValidationResult()
+
+    if "totalAreaHectares" in fields:
+        try:
+            val = float(fields["totalAreaHectares"])
+            if val <= 0 or val > 1000:
+                result.add_warning(f"Land area {val} Ha out of expected range (0-1000).")
+        except ValueError:
+            result.add_warning("Invalid land area number format.")
+    else:
+        result.add_warning("Land area in hectares could not be extracted.")
+
+    if "gatNumber" not in fields:
+        result.add_warning("Gat/Survey number could not be extracted.")
+
+    logger.info(
+        f"Satbara validation: valid={result.valid}, "
+        f"warnings={len(result.warnings)}"
+    )
+    return result
+
+
 # Document-type to validator mapping
 _VALIDATORS = {
     "AADHAAR_FRONT": validate_aadhaar_fields,
     "AADHAAR_BACK": validate_aadhaar_fields,
     "PAN": validate_pan_fields,
+    "SATBARA_7_12": validate_satbara_fields,
 }
 
 

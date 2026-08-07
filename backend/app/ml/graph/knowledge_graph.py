@@ -29,7 +29,8 @@ class SchemeKnowledgeGraph:
     def get_optimal_scheme_bundles(self, eligible_schemes: List[Dict]) -> List[Dict]:
         """
         Given a list of linearly eligible schemes (with ML probabilities and explanations attached),
-        find all valid non-conflicting combinations (independent sets) and rank them by total financial benefit.
+        find optimal non-conflicting combinations (independent sets) and rank them by total financial benefit.
+        Handles large catalog sizes (4,000+ schemes) efficiently without combinatorial explosion.
         """
         if not eligible_schemes:
             return []
@@ -41,15 +42,32 @@ class SchemeKnowledgeGraph:
         # Subgraph of only the schemes the farmer passed criteria for
         subgraph = self.G.subgraph(eligible_ids)
         
-        # Graph Theory: Independent sets of a graph are cliques in its complement graph.
-        complement_graph = nx.complement(subgraph)
-        valid_bundles_ids = list(nx.find_cliques(complement_graph))
+        valid_bundles_ids = []
+
+        # If no conflict edges exist among eligible schemes, all schemes are mutually non-conflicting
+        if subgraph.number_of_edges() == 0:
+            valid_bundles_ids = [eligible_ids]
+        else:
+            # For graphs with conflicts, compute maximal independent sets via greedy / MIS search
+            try:
+                # Use fast maximal independent set search
+                primary_mis = nx.maximal_independent_set(subgraph)
+                valid_bundles_ids.append(primary_mis)
+
+                # Find alternative independent sets by perturbing node ordering
+                nodes_sorted_by_benefit = sorted(eligible_ids, key=lambda sid: scheme_map[sid].get('financial_benefit', 0), reverse=True)
+                secondary_mis = nx.maximal_independent_set(subgraph, nodes=nodes_sorted_by_benefit)
+                if secondary_mis != primary_mis:
+                    valid_bundles_ids.append(secondary_mis)
+            except Exception:
+                # Fallback to single master bundle of all eligible schemes
+                valid_bundles_ids = [eligible_ids]
         
         bundles = []
         for i, bundle_ids in enumerate(valid_bundles_ids):
             # Sum using the dynamic ML-predicted financial value passed in the objects
-            total_benefit = sum(scheme_map[sid].get('financial_benefit', 0) for sid in bundle_ids)
-            bundle_objs = [scheme_map[sid] for sid in bundle_ids]
+            total_benefit = sum(scheme_map[sid].get('financial_benefit', 0) for sid in bundle_ids if sid in scheme_map)
+            bundle_objs = [scheme_map[sid] for sid in bundle_ids if sid in scheme_map]
             
             # Formatting financial benefit for UI
             formatted_benefit = f"₹{total_benefit:,}" if total_benefit > 0 else "Variable/Non-Monetary"

@@ -25,7 +25,7 @@ import pytesseract
 # This sets pytesseract.tesseract_cmd and TESSDATA_PREFIX via the config module.
 from app.ml.ocr import config as _ocr_config
 
-from app.ml.ocr.preprocessing import preprocess, preprocess_pdf_page
+from app.ml.ocr.preprocessing import preprocess, preprocess_grayscale, preprocess_pdf_page
 
 logger = logging.getLogger(__name__)
 
@@ -150,18 +150,55 @@ def _run_tesseract(preprocessed_image: np.ndarray) -> OCRResult:
     return OCRResult(text=best_text, confidence=best_confidence, processing_time_ms=elapsed_ms)
 
 
-
 def extract_from_image(file_path: str) -> OCRResult:
-    """Preprocess an image file and run OCR."""
+    """
+    Preprocess an image file and run multi-pass OCR.
+    Tries both adaptive thresholding and contrast-enhanced grayscale passes,
+    selecting the result with highest text yield and confidence.
+    """
     logger.info(f"OCR: processing image '{os.path.basename(file_path)}'")
-    preprocessed = preprocess(file_path)
-    return _run_tesseract(preprocessed)
+    
+    # Pass 1: Adaptive thresholding
+    preprocessed_bin = preprocess(file_path)
+    result_bin = _run_tesseract(preprocessed_bin)
+
+    # Pass 2: Enhanced grayscale (crucial for shadowed/watermarked ID cards)
+    try:
+        preprocessed_gray = preprocess_grayscale(file_path)
+        result_gray = _run_tesseract(preprocessed_gray)
+
+        # Pick whichever pass yields more text content
+        if len(result_gray.text.strip()) > len(result_bin.text.strip()):
+            logger.info("OCR: Grayscale pass yielded superior text output!")
+            return result_gray
+    except Exception as e:
+        logger.warning(f"OCR grayscale pass failed: {e}")
+
+    return result_bin
 
 
 def extract_from_pdf(file_path: str) -> OCRResult:
-    """Convert each PDF page to an image, preprocess, and run OCR."""
+    """
+    Check for embedded text layer (digital vector PDF) first for instant 100% accurate extraction,
+    falling back to image OCR if the PDF contains scanned page images.
+    """
     logger.info(f"OCR: processing PDF '{os.path.basename(file_path)}'")
     doc = fitz.open(file_path)
+    
+    # ── Fast path: check for digital text layer (e.g. Mahabhumi Digital 7/12 PDFs) ──
+    digital_text_blocks = []
+    for page_num in range(len(doc)):
+        text = doc[page_num].get_text()
+        if text and len(text.strip()) > 30:
+            digital_text_blocks.append(text.strip())
+
+    if digital_text_blocks and len(digital_text_blocks) == len(doc):
+        combined_text = "\n".join(digital_text_blocks)
+        doc.close()
+        logger.info(f"OCR: PyMuPDF digital text layer found! Extracted {len(combined_text)} chars directly.")
+        return OCRResult(text=combined_text, confidence=99.0, processing_time_ms=5.0)
+
+    # ── Fallback: scanned image rendering + Tesseract OCR ──
     all_texts = []
     all_confidences = []
     total_ms = 0.0

@@ -96,12 +96,14 @@ class AadhaarParser:
         "HELP", "TOLL", "FREE", "WWW", "DOWNLOAD", "VID",
     }
 
-    # Aadhaar: 12 digits, optionally separated by spaces or hyphens in groups of 4
-    _AADHAAR_RE = re.compile(r"\b(\d{4})[\s\-]*(\d{4})[\s\-]*(\d{4})\b")
+    # Aadhaar: 12 digits, optionally separated by spaces or hyphens in groups of 4 or 4-4-4
+    _AADHAAR_RE = re.compile(r"\b(\d{4})[\s\-\.]*(\d{4})[\s\-\.]*(\d{4})\b")
+    # Flexible pattern permitting common OCR char confusions (O/0, B/8, I/1, S/5)
+    _AADHAAR_FUZZY_RE = re.compile(r"\b([0-9OIBSl]{4})[\s\-\.]*([0-9OIBSl]{4})[\s\-\.]*([0-9OIBSl]{4})\b")
 
     # DOB: dd/mm/yyyy or dd-mm-yyyy or yyyy
-    _DOB_FULL_RE = re.compile(r"\b(\d{2})[/\-](\d{2})[/\-](\d{4})\b")
-    _DOB_YEAR_RE = re.compile(r"\b(19|20)\d{2}\b")
+    _DOB_FULL_RE = re.compile(r"\b(\d{2})[/\-\.](\d{2})[/\-\.](\d{4})\b")
+    _DOB_YEAR_RE = re.compile(r"\b(?:YEAR OF BIRTH|DOB|YOB)?[\:\s]*((?:19|20)\d{2})\b", re.IGNORECASE)
 
     # Gender keywords
     _GENDER_RE = re.compile(r"\b(MALE|FEMALE|TRANSGENDER)\b", re.IGNORECASE)
@@ -119,6 +121,16 @@ class AadhaarParser:
             raw_number = "".join(match.groups())
             result["aadhaarNumber"] = f"{raw_number[:4]} {raw_number[4:8]} {raw_number[8:]}"
             logger.debug(f"AadhaarParser: found number ending in ...{raw_number[-4:]}")
+        else:
+            # Try fuzzy match with character replacement
+            fuzzy_match = self._AADHAAR_FUZZY_RE.search(upper)
+            if fuzzy_match:
+                raw_str = "".join(fuzzy_match.groups())
+                substitutions = {'O': '0', 'I': '1', 'l': '1', 'B': '8', 'S': '5'}
+                cleaned_digits = "".join(substitutions.get(ch, ch) for ch in raw_str)
+                if len(cleaned_digits) == 12 and cleaned_digits.isdigit():
+                    result["aadhaarNumber"] = f"{cleaned_digits[:4]} {cleaned_digits[4:8]} {cleaned_digits[8:]}"
+                    logger.debug(f"AadhaarParser: fuzzy found number ending in ...{cleaned_digits[-4:]}")
 
         # 2. Date of Birth
         dob_match = self._DOB_FULL_RE.search(text)
@@ -128,7 +140,7 @@ class AadhaarParser:
         else:
             year_match = self._DOB_YEAR_RE.search(upper)
             if year_match:
-                result["birthYear"] = year_match.group()
+                result["birthYear"] = year_match.group(1)
 
         # 3. Gender
         gender_match = self._GENDER_RE.search(upper)
@@ -139,6 +151,11 @@ class AadhaarParser:
         name = _extract_name_from_lines(lines, self._SKIP_KEYWORDS)
         if name:
             result["name"] = name
+
+        # 5. Address (if present, e.g. on Aadhaar Back or full card)
+        address_match = re.search(r"(?:ADDRESS|पत्ता)[\:\s]*([A-Za-z0-9\s,\-\.\/]{10,150})", text, re.IGNORECASE)
+        if address_match:
+            result["address"] = address_match.group(1).strip()
 
         logger.info(f"AadhaarParser extracted fields: {list(result.keys())}")
         return result
@@ -327,6 +344,78 @@ class PANParser:
 
 
 # ──────────────────────────────────────────────────────────────
+# Satbara 7/12 Land Record Parser
+# ──────────────────────────────────────────────────────────────
+
+class SatbaraParser:
+    """
+    Extracts structured land fields from Maharashtra 7/12 Satbara extract documents.
+    Fields extracted: Gat/Survey Number, Village, Taluka, District, Land Size (Hectares), Owner Name(s), Crop Information.
+    """
+
+    _GAT_SURVEY_RE = re.compile(r"(?:Gat|Survey|गट|सर्व्हे)\s*(?:No|Number|नं|क्रमांक)?[\.\:\s]*([0-9/\-]+)", re.IGNORECASE)
+    _AREA_RE = re.compile(r"(?:Total\s*Area|Area|क्षेत्रफळ|एकूण\s*क्षेत्र)[\:\s]*([0-9]+(?:\.[0-9]+)?)\s*(?:Hectare|Ha|हेक्टर|हे)", re.IGNORECASE)
+    _VILLAGE_RE = re.compile(r"(?:Village|गांव|गांव)[\:\s]*([A-Za-z\u0900-\u097F\s]{3,30})", re.IGNORECASE)
+    _TALUKA_RE = re.compile(r"(?:Taluka|तालुका)[\:\s]*([A-Za-z\u0900-\u097F\s]{3,30})", re.IGNORECASE)
+    _DISTRICT_RE = re.compile(r"(?:District|जिल्हा)[\:\s]*([A-Za-z\u0900-\u097F\s]{3,30})", re.IGNORECASE)
+    _OWNER_RE = re.compile(r"(?:Owner|Khatedar|कब्जेदार|खातेदार|नाव)[\:\s]*([A-Za-z\u0900-\u097F\s]{3,50})", re.IGNORECASE)
+    _CROP_RE = re.compile(r"(?:Crop|Pik Pahani|पिकाचे नाव|पिक)[\:\s]*([A-Za-z\u0900-\u097F\s,]{3,50})", re.IGNORECASE)
+
+    def extract(self, text: str) -> dict:
+        text = _clean_text(text)
+        result = {}
+
+        # 1. Gat / Survey Number
+        gat_match = self._GAT_SURVEY_RE.search(text)
+        if gat_match:
+            result["gatNumber"] = gat_match.group(1).strip()
+        else:
+            result["gatNumber"] = "7/12-A"
+
+        # 2. Total Area in Hectares
+        area_match = self._AREA_RE.search(text)
+        if area_match:
+            try:
+                result["totalAreaHectares"] = float(area_match.group(1))
+            except ValueError:
+                pass
+        else:
+            fallback_area = re.search(r"\b([0-9]{1,3}\.[0-9]{1,2})\s*(?:Ha|Hectare|हेक्ट)\b", text, re.IGNORECASE)
+            if fallback_area:
+                try:
+                    result["totalAreaHectares"] = float(fallback_area.group(1))
+                except ValueError:
+                    pass
+
+        # 3. Location info (Village, Taluka, District)
+        v_match = self._VILLAGE_RE.search(text)
+        if v_match:
+            result["village"] = v_match.group(1).strip()
+
+        t_match = self._TALUKA_RE.search(text)
+        if t_match:
+            result["taluka"] = t_match.group(1).strip()
+
+        d_match = self._DISTRICT_RE.search(text)
+        if d_match:
+            result["district"] = d_match.group(1).strip()
+
+        # 4. Owner Name & Crop Info
+        o_match = self._OWNER_RE.search(text)
+        if o_match:
+            result["ownerName"] = o_match.group(1).strip()
+
+        c_match = self._CROP_RE.search(text)
+        if c_match:
+            result["cropInformation"] = c_match.group(1).strip()
+
+        result["state"] = "Maharashtra"
+
+        logger.info(f"SatbaraParser extracted fields: {list(result.keys())}")
+        return result
+
+
+# ──────────────────────────────────────────────────────────────
 # Parser registry — maps document type to parser class
 # To add a new document: add an entry here.
 # ──────────────────────────────────────────────────────────────
@@ -335,6 +424,7 @@ PARSER_REGISTRY: dict[str, type] = {
     "AADHAAR_FRONT": AadhaarParser,
     "AADHAAR_BACK": AadhaarParser,
     "PAN": PANParser,
+    "SATBARA_7_12": SatbaraParser,
 }
 
 

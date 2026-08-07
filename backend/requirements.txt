@@ -1,5 +1,7 @@
 # Web Framework
 fastapi>=0.112.0
+httpx>=0.27.0
+google-generativeai>=0.8.0
 uvicorn>=0.30.0
 pydantic>=2.8.0
 
@@ -39,4 +41,4 @@ python-jose[cryptography]
 
 # Web Scraping & APIs
 beautifulsoup4==4.12.3
-requests==2.32.3
+requests==2.32.3

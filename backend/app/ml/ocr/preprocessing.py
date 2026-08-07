@@ -45,10 +45,12 @@ def _deskew(gray: np.ndarray) -> np.ndarray:
 
         angles = []
         for line in lines:
-            x1, y1, x2, y2 = line[0]
-            if x2 - x1 != 0:
-                angle = np.degrees(np.arctan2(y2 - y1, x2 - x1))
-                angles.append(angle)
+            line_pts = line[0] if line.ndim > 1 else line
+            if len(line_pts) >= 4:
+                x1, y1, x2, y2 = line_pts[:4]
+                if x2 - x1 != 0:
+                    angle = np.degrees(np.arctan2(y2 - y1, x2 - x1))
+                    angles.append(angle)
 
         if not angles:
             return gray
@@ -80,9 +82,9 @@ def preprocess(image_input: Union[str, np.ndarray], enhance_resolution: bool = T
       2. Resolution enhancement (upscale if beneficial)
       3. Grayscale conversion
       4. Deskew correction
-      5. Bilateral noise removal (preserves edges)
-      6. Adaptive thresholding (handles uneven lighting)
-      7. Morphological cleanup (remove speckles)
+      5. CLAHE (Contrast Limited Adaptive Histogram Equalization)
+      6. Bilateral noise removal (preserves edges)
+      7. Adaptive thresholding with dynamic block size
       8. Border cleanup
 
     Returns a binary (thresholded) numpy array ready for Tesseract.
@@ -92,7 +94,6 @@ def preprocess(image_input: Union[str, np.ndarray], enhance_resolution: bool = T
 
     # 1. Resolution enhancement — upscale small/low-res images
     if enhance_resolution:
-        # Target at least 300 DPI equivalent: typical ID card is ~85×54mm → 1000×630 at 300dpi
         scale = 1.0
         if w < 1000 or h < 600:
             scale = max(1000 / w, 600 / h, 1.5)
@@ -100,6 +101,7 @@ def preprocess(image_input: Union[str, np.ndarray], enhance_resolution: bool = T
             new_w, new_h = int(w * scale), int(h * scale)
             image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
             logger.debug(f"Upscaled image {w}x{h} → {new_w}x{new_h} (scale={scale:.2f})")
+            h, w = image.shape[:2]
 
     # 2. Grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -107,25 +109,48 @@ def preprocess(image_input: Union[str, np.ndarray], enhance_resolution: bool = T
     # 3. Deskew
     gray = _deskew(gray)
 
-    # 4. Bilateral filter: removes noise while keeping edges sharp
-    gray = cv2.bilateralFilter(gray, d=9, sigmaColor=75, sigmaSpace=75)
+    # 4. CLAHE to enhance contrast on uneven/shadowed phone photos
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    gray_enhanced = clahe.apply(gray)
 
-    # 5. Adaptive thresholding: handles documents with shadows / gradient backgrounds
+    # 5. Bilateral filter: removes noise while keeping edges sharp
+    filtered = cv2.bilateralFilter(gray_enhanced, d=9, sigmaColor=75, sigmaSpace=75)
+
+    # 6. Dynamic block size based on image dimensions (must be odd integer > 1)
+    block_size = max(15, (min(h, w) // 40) | 1)
+    if block_size % 2 == 0:
+        block_size += 1
+
+    # Adaptive thresholding
     thresh = cv2.adaptiveThreshold(
-        gray, 255,
+        filtered, 255,
         cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY,
-        blockSize=11, C=2
+        blockSize=block_size, C=4
     )
 
-    # 6. Morphological opening: removes tiny speckles (salt noise)
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 1))
-    cleaned = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
-
     # 7. Border cleanup: add a white border to avoid Tesseract misreading edges
-    cleaned = cv2.copyMakeBorder(cleaned, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=255)
+    cleaned = cv2.copyMakeBorder(thresh, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=255)
 
     return cleaned
+
+
+def preprocess_grayscale(image_input: Union[str, np.ndarray]) -> np.ndarray:
+    """
+    Alternative preprocessing pass returning contrast-enhanced grayscale.
+    Tesseract often performs better on high-contrast grayscale than binarized images.
+    """
+    image = _ensure_bgr(image_input)
+    h, w = image.shape[:2]
+    if w < 1000 or h < 600:
+        scale = max(1000 / w, 600 / h, 1.5)
+        image = cv2.resize(image, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_CUBIC)
+    
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    gray = _deskew(gray)
+    clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
+    enhanced = clahe.apply(gray)
+    return cv2.copyMakeBorder(enhanced, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=255)
 
 
 def preprocess_pdf_page(pixmap) -> np.ndarray:

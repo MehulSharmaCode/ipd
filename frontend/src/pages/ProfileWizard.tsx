@@ -43,8 +43,9 @@ export default function ProfileWizard() {
   const { t } = useTranslationText();
 
   const [uploadStatus, setUploadStatus] = useState<Record<string, UploadStatus>>({
-    aadhar: { loading: false, verified: false, confidence: 0, warnings: [] },
-    pan:    { loading: false, verified: false, confidence: 0, warnings: [] },
+    aadhar:  { loading: false, verified: false, confidence: 0, warnings: [] },
+    pan:     { loading: false, verified: false, confidence: 0, warnings: [] },
+    satbara: { loading: false, verified: false, confidence: 0, warnings: [] },
   });
 
   const [profile, setProfile] = useState({
@@ -56,6 +57,8 @@ export default function ProfileWizard() {
     category: '',
     state: '',
     district: '',
+    taluka: '',
+    village: '',
     annual_income: '',
     irrigation_type: '',
     land_size_hectares: '',
@@ -67,6 +70,7 @@ export default function ProfileWizard() {
     primary_crops: '',
     is_aadhar_verified: false,
     is_pan_verified: false,
+    is_land_record_verified: false,
     aadhar_number: '',
     pan_number: '',
   });
@@ -83,14 +87,15 @@ export default function ProfileWizard() {
           age: d.age?.toString() || '',
           annual_income: d.annual_income?.toString() || '',
           land_size_hectares: d.land_size_hectares?.toString() || '',
-          primary_crops: d.primary_crops?.join(', ') || '',
+          primary_crops: Array.isArray(d.primary_crops) ? d.primary_crops.join(', ') : d.primary_crops || '',
         }));
         setUploadStatus(prev => ({
           ...prev,
-          aadhar: { ...prev.aadhar, verified: d.is_aadhar_verified || false },
-          pan:    { ...prev.pan,    verified: d.is_pan_verified    || false },
+          aadhar:  { ...prev.aadhar,  verified: d.is_aadhar_verified || false },
+          pan:     { ...prev.pan,     verified: d.is_pan_verified    || false },
+          satbara: { ...prev.satbara, verified: d.is_land_record_verified || false },
         }));
-        // If both documents are already verified, skip to Step 2
+        // If all documents are verified, skip to Step 2
         if (d.is_aadhar_verified && d.is_pan_verified) {
           setStep(2);
         }
@@ -104,7 +109,7 @@ export default function ProfileWizard() {
   // ── OCR-powered document upload ──────────────────────────────
   const handleFileUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
-    docType: 'aadhar' | 'pan',
+    docType: 'aadhar' | 'pan' | 'satbara',
   ) => {
     if (!e.target.files?.[0]) return;
     const file = e.target.files[0];
@@ -126,14 +131,14 @@ export default function ProfileWizard() {
       const isValid: boolean = data.validation?.valid === true;
       const warnings: string[] = data.validation?.warnings || [];
       const confidence: number = data.confidence || 0;
-      const suggestions: OcrSuggestions = data.profileSuggestions || {};
+      const suggestions: OcrSuggestions & any = data.profileSuggestions || {};
       const fields = data.fields || {};
 
       // ── Auto-fill profile fields from OCR suggestions ──────
       setProfile(prev => {
         const updates: any = { ...prev };
 
-        // Prefer OCR name only if user hasn't filled it
+        // Prefer OCR suggestions
         if (suggestions.full_name_ocr_suggestion && !prev.full_name) {
           updates.full_name = suggestions.full_name_ocr_suggestion;
         }
@@ -151,6 +156,24 @@ export default function ProfileWizard() {
           updates.pan_number = fields.panNumber;
           updates.is_pan_verified = isValid;
         }
+        if (docType === 'satbara') {
+          if (suggestions.land_size_hectares || fields.totalAreaHectares) {
+            updates.land_size_hectares = String(suggestions.land_size_hectares || fields.totalAreaHectares);
+          }
+          if (suggestions.village || fields.village) {
+            updates.village = suggestions.village || fields.village;
+          }
+          if (suggestions.taluka || fields.taluka) {
+            updates.taluka = suggestions.taluka || fields.taluka;
+          }
+          if (suggestions.district || fields.district) {
+            updates.district = suggestions.district || fields.district;
+          }
+          if (suggestions.state || fields.state) {
+            updates.state = suggestions.state || fields.state;
+          }
+          updates.is_land_record_verified = true;
+        }
 
         return updates;
       });
@@ -161,15 +184,15 @@ export default function ProfileWizard() {
         [docType]: { loading: false, verified: true, confidence, warnings },
       }));
 
+      const docTitle = docType === 'aadhar' ? 'Aadhaar' : docType === 'pan' ? 'PAN' : 'Satbara 7/12';
       if (isValid) {
-        toast.success(`✅ ${docType === 'aadhar' ? 'Aadhaar' : 'PAN'} verified! Fields auto-filled.`);
+        toast.success(`✅ ${docTitle} verified! Fields auto-filled.`);
       } else {
         toast.warning(
           warnings.length > 0
             ? `⚠️ Uploaded — ${warnings[0]}`
-            : '⚠️ Document uploaded. Some fields may need manual review.',
+            : '⚠️ Document uploaded. Some fields auto-filled for review.',
         );
-        // Still mark as "uploaded" even if not perfectly verified
         setUploadStatus(prev => ({
           ...prev,
           [docType]: { ...prev[docType], verified: true },
@@ -224,7 +247,7 @@ export default function ProfileWizard() {
     description,
     icon,
   }: {
-    docKey: 'aadhar' | 'pan';
+    docKey: 'aadhar' | 'pan' | 'satbara';
     label: string;
     description: string;
     icon: React.ReactNode;
@@ -367,7 +390,7 @@ export default function ProfileWizard() {
                 {step === 4 ? 'Setup Complete!' : t('wizard.title')}
               </CardTitle>
               <CardDescription className="text-emerald-100 mt-1 font-medium">
-                {step === 1 && 'Upload your Aadhaar & PAN — we\'ll auto-fill your details'}
+                {step === 1 && 'Upload your Aadhaar, PAN, & Satbara (7/12) — we\'ll auto-fill your details'}
                 {step === 2 && t('wizard.subtitle')}
                 {step === 3 && 'Tell us about your farm'}
                 {step === 4 && 'Your profile is ready for AI scheme matching'}
@@ -397,8 +420,8 @@ export default function ProfileWizard() {
                     <div>
                       <p className="font-bold text-blue-800 dark:text-blue-300">AI-Powered Auto-Fill</p>
                       <p className="text-blue-600 dark:text-blue-400 mt-0.5">
-                        Upload your documents and our OCR engine will automatically
-                        extract your name, DOB, gender, and ID numbers — saving you time.
+                        Upload your Aadhaar, PAN, or Satbara (7/12) land record. Our OCR engine will automatically
+                        extract your name, DOB, land area, and location details — saving you time.
                         You can review and edit everything before saving.
                       </p>
                     </div>
@@ -416,6 +439,13 @@ export default function ProfileWizard() {
                     label={t('form.doc_pan') || 'PAN Card'}
                     description="Income Tax Department ID"
                     icon={<Upload className="h-5 w-5" />}
+                  />
+
+                  <DocumentUploadCard
+                    docKey="satbara"
+                    label="Satbara (7/12) Land Record"
+                    description="Maharashtra Land Ownership Extract"
+                    icon={<Tractor className="h-5 w-5" />}
                   />
 
                   <Button

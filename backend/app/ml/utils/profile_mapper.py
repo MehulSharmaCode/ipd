@@ -61,13 +61,15 @@ def map_farmer_to_ml_features(api_profile: dict) -> dict:
 
 
     mapped_profile = {
-        "income":       income,
-        "land_size":    land_size,
-        "state":        str(api_profile.get("state", "")).lower(),
-        "crop":         str(crop).lower(),
-        "irrigation":   str(irrigation).lower(),
-        "farmer_type":  str(api_profile.get("farmer_type", "")).lower(),
-        "scheme":       "pm_kisan",   # placeholder — overwritten per-scheme during ranking
+        "income":      income,
+        "land_size":   land_size,
+        "state":       str(api_profile.get("state", "")).lower(),
+        "crop":        str(crop).lower(),
+        "irrigation":  str(irrigation).lower(),
+        "farmer_type": str(api_profile.get("farmer_type", "")).lower(),
+        # NOTE: 'scheme' key removed — scheme-level features are now derived
+        # per-scheme inside SchemeSuccessPredictor.build_scheme_features()
+        # so that every scheme receives a unique, generalizable probability.
     }
 
     return mapped_profile
