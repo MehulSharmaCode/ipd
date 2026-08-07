@@ -313,7 +313,10 @@
     "step_verification": "ચકાસણી",
     "step_x_of_y": "Step {{current}} of {{total}}",
     "subtitle": "આ માહિતી અમારા AI ને તમારા માટે શ્રેષ્ઠ યોજનાઓ શોધવામાં મદદ કરે છે.",
-    "toast_success": "પ્રોફાઇલ વિગતો સાચવી!"
+    "toast_success": "પ્રોફાઇલ વિગતો સાચવી!",
+    "step_land_record": "જમીન રેકોર્ડ",
+    "analyzing_land_record": "જમીન રેકોર્ડ વિશ્લેષણ કરવામાં આવે છે. આ થોડી સેકન્ડ લઈ શકે છે.",
+    "scanning_document": "દસ્તાવેજ સ્કેન કરવામાં આવે છે..."
   },
   "dashboard": {
     "nav_home": "હોમ",

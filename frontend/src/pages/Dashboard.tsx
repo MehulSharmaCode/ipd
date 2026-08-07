@@ -213,38 +213,46 @@ export default function Dashboard() {
         toast.dismiss();
         toast.success(`Policy ingested: ${Object.keys(res.data.extracted_rules || {}).length} rules extracted`);
       } else {
-        // Normalize doc_type to lowercase — backend validates against 'aadhar', 'pan'
-        docData.append('doc_type', uploadType.toLowerCase());
+        // Map UI label → backend doc_type key registered in DocumentRouter.
+        // Centralised here so adding future types only requires one entry.
+        const DOC_TYPE_MAP: Record<string, string> = {
+          Aadhar:       'aadhar',
+          PAN:          'pan',
+          Land_Record:  '7_12',
+          Bank_Passbook:'bank_passbook',
+        };
+        const backendDocType = DOC_TYPE_MAP[uploadType] ?? uploadType.toLowerCase();
+        docData.append('doc_type', backendDocType);
+
         const res = await api.post('/upload', docData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
 
-        // API returns: { status, documentType, confidence, fields, validation, profileSuggestions }
+        // ExtractionResult schema: { status, documentType, fields, validation }
+        // fields shape: { field_name: { value, source_document, confidence } }
         const data = res.data;
         const isValid: boolean = data.validation?.valid === true;
-        const fields = data.fields || {};
+        const warnings: string[] = data.validation?.warnings || [];
 
         if (isValid) {
-          // Show extracted ID number in the success message
-          const extractedId = fields.aadhaarNumber || fields.panNumber || '';
           toast.success(
-            extractedId
-              ? `✅ ${uploadType} verified! ID: ${extractedId}`
-              : t('dashboard.toast_upload_success', { type: uploadType }) || `${uploadType} uploaded successfully`
+            t('dashboard.toast_upload_success', { type: uploadType }) ||
+            `${uploadType} uploaded successfully.`
           );
+        } else if (warnings.length > 0) {
+          toast.warning(`Document uploaded with warnings: ${warnings[0]}`);
         } else {
-          const warnings = data.validation?.warnings || [];
-          if (warnings.length > 0) {
-            toast.warning(`Document uploaded with warnings: ${warnings[0]}`);
-          } else {
-            toast.success(t('dashboard.toast_upload_success', { type: uploadType }) || `${uploadType} uploaded successfully`);
-          }
+          toast.success(
+            t('dashboard.toast_upload_success', { type: uploadType }) ||
+            `${uploadType} uploaded successfully.`
+          );
         }
 
         setSelectedFile(null);
         const fileInput = document.getElementById('document-upload') as HTMLInputElement;
         if (fileInput) fileInput.value = '';
 
+        // Refresh profile from backend — backend already persisted extracted fields
         fetchProfile();
       }
     } catch (err: any) {
