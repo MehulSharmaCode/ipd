@@ -8,13 +8,27 @@ backend/venv/
 
 # Node
 node_modules/
+frontend/node_modules/
 
 # Environment variables
 .env
+backend/.env
+
+# Uploads
+backend/uploads/
+
+# Logs
+*.log
+error.log
+
+# Local JSON files
+login.json
+signup.json
+me.json
 
 # OS files
 .DS_Store
 Thumbs.db
 
-# VSCode
+# VS Code
 .vscode/
