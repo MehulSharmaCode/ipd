@@ -14,6 +14,7 @@ DOCUMENT_SIGNATURES and (optionally) a new ClassificationResult type string.
 No other module needs to change.
 """
 
+import re
 import logging
 from dataclasses import dataclass
 from typing import Optional
@@ -31,23 +32,30 @@ DOCUMENT_SIGNATURES = [
     {
         "type": "AADHAAR_FRONT",
         "keywords": [
+            # Multi-word (ideal case — clean scan)
             "GOVERNMENT OF INDIA",
             "UNIQUE IDENTIFICATION",
             "AUTHORITY OF INDIA",
+            # Single-word resilient (survives moderate OCR corruption)
             "UIDAI",
-            "YOUR AADHAAR",
             "AADHAAR",
+            "ENROLLMENT",
+            "ENROLMENT",
+            "YOUR AADHAAR",
             "BHARAT",
+            # Field markers — almost always present on Aadhaar front
             "DOB",
             "DATE OF BIRTH",
             "YEAR OF BIRTH",
+            # Gender markers — always present on Aadhaar front
             "MALE",
             "FEMALE",
             "TRANSGENDER",
-            "ENROLMENT",
             "S/O",
             "D/O",
             "W/O",
+            # VID line present on newer e-Aadhaar cards
+            "VID",
         ],
         "min_hits": 1,
     },
@@ -57,6 +65,7 @@ DOCUMENT_SIGNATURES = [
             "GOVERNMENT OF INDIA",
             "UNIQUE IDENTIFICATION",
             "UIDAI",
+            "AADHAAR",
             "ADDRESS",
             "MOBILE",
             "PIN",
@@ -73,10 +82,16 @@ DOCUMENT_SIGNATURES = [
     {
         "type": "PAN",
         "keywords": [
+            # Multi-word (ideal case)
             "INCOME TAX DEPARTMENT",
             "PERMANENT ACCOUNT NUMBER",
             "GOVT. OF INDIA",
             "GOVERNMENT OF INDIA",
+            # Single-word resilient
+            "INCOME",
+            "PERMANENT",
+            "SIGNATURE",
+            # PAN-specific labels
             "FATHER",
             "INCOME TAX",
             "PERMANENT ACCOUNT",
@@ -141,7 +156,42 @@ def classify(raw_text: str) -> ClassificationResult:
             best_keywords = matched
 
     if best_match is None:
-        logger.warning("Document classification: UNKNOWN — no signatures matched")
+        # ── Structural fallback: keyword matching failed, try pattern-based detection ──
+        # Fallback 1: PAN — a valid 10-char PAN pattern is a very strong signal
+        # Remove spaces and search for AAAAA9999A format
+        compressed = re.sub(r"\s+", "", normalized)
+        pan_match = re.search(r"[A-Z]{5}[0-9]{4}[A-Z]", compressed)
+        has_dob = bool(re.search(r"\bDOB\b|DATE OF BIRTH|\d{2}[/\-]\d{2}[/\-]\d{4}", normalized))
+
+        if pan_match and has_dob:
+            logger.info(
+                f"Document classified as 'PAN' via structural fallback "
+                f"(PAN pattern found: {pan_match.group()[:5]}XXXXX)"
+            )
+            return ClassificationResult(
+                document_type="PAN",
+                confidence=0.5,   # Lower confidence — structural match only
+                keyword_hits=0,
+                matched_keywords=[f"structural:PAN={pan_match.group()[:5]}XXXXX"],
+            )
+
+        # Fallback 2: Aadhaar — a 12-digit number + DOB/gender is a strong Aadhaar signal
+        aadhaar_match = re.search(r"\d{4}[\s\-]*\d{4}[\s\-]*\d{4}", normalized)
+        has_gender = bool(re.search(r"\bMALE\b|\bFEMALE\b|\bTRANSGENDER\b", normalized))
+
+        if aadhaar_match and (has_dob or has_gender):
+            logger.info(
+                "Document classified as 'AADHAAR_FRONT' via structural fallback "
+                "(12-digit number + DOB/gender found)"
+            )
+            return ClassificationResult(
+                document_type="AADHAAR_FRONT",
+                confidence=0.4,   # Lower confidence — structural match only
+                keyword_hits=0,
+                matched_keywords=["structural:12-digit-number"],
+            )
+
+        logger.warning("Document classification: UNKNOWN — no signatures or structural patterns matched")
         return ClassificationResult(
             document_type="UNKNOWN",
             confidence=0.0,

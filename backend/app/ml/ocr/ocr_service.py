@@ -205,7 +205,9 @@ def extract_from_pdf(file_path: str) -> OCRResult:
 
     for page_num in range(len(doc)):
         page = doc.load_page(page_num)
-        mat = fitz.Matrix(3.0, 3.0)
+        # 4.0x zoom: ensures even 150-DPI scanned PDFs render at ~600 DPI,
+        # which is above the minimum for reliable Tesseract OCR on small text.
+        mat = fitz.Matrix(4.0, 4.0)
         pix = page.get_pixmap(matrix=mat)
         preprocessed = preprocess_pdf_page(pix)
         result = _run_tesseract(preprocessed)

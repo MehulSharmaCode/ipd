@@ -376,7 +376,10 @@
     "step_verification": "सत्यापन",
     "step_x_of_y": "Step {{current}} of {{total}}",
     "subtitle": "यह जानकारी हमारे एआई को आपके लिए सर्वोत्तम योजनाएं ढूंढने में मदद करती है।",
-    "toast_success": "प्रोफ़ाइल विवरण सहेजा गया!"
+    "toast_success": "प्रोफ़ाइल विवरण सहेजा गया!",
+    "step_land_record": "भूमि अभिलेख",
+    "analyzing_land_record": "भूमि अभिलेख का विश्लेषण किया जा रहा है। इसमें कुछ सेकंड लग सकते हैं।",
+    "scanning_document": "दस्तावेज़ स्कैन किया जा रहा है..."
   },
   "dashboard": {
     "nav_home": "होम",

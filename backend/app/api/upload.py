@@ -2,10 +2,13 @@
 """
 Document Upload Endpoint
 ------------------------
-Responsibility: Accept a file upload, save it, run the OCR pipeline,
-update the farmer's database record, and return structured OCR results.
+Responsibility: Accept a file upload, save it, route it through the
+Intelligent Document Processing Engine, update the farmer's database
+record, and return structured extraction results.
 
-Business logic lives in app.ml.ocr.pipeline — NOT here.
+Business logic lives in app.document_processing — NOT here.
+The DocumentRouter dispatches to the correct processor (OCR or Gemini)
+based on the doc_type parameter.
 """
 
 import os
@@ -16,7 +19,11 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 
 from app.core.security import get_current_user
 from app.core.database import get_db
-from app.ml.ocr.pipeline import process as run_ocr_pipeline
+
+# Import the document processing engine (triggers processor registration)
+import app.document_processing.ocr     # noqa: F401 — registers aadhar/pan processors
+import app.document_processing.vision  # noqa: F401 — registers 7_12 processor
+from app.document_processing.router import document_router
 
 logger = logging.getLogger(__name__)
 
@@ -44,22 +51,20 @@ async def upload_document(
     file: UploadFile = File(...),
     doc_type: str = Form(
         ...,
-        description="Type of document. Accepted values: 'aadhar', 'pan'",
+        description="Type of document. Accepted values: 'aadhar', 'pan', '7_12'",
     ),
     current_user: dict = Depends(get_current_user),
 ):
     """
-    Upload a government ID document (Aadhaar or PAN) for OCR verification.
+    Upload a document for intelligent extraction.
 
-    The OCR pipeline will:
-      1. Preprocess the image (denoise, deskew, threshold)
-      2. Extract text using Tesseract (/opt/homebrew/bin/tesseract)
-      3. Classify the document type
-      4. Parse structured fields (name, DOB, ID number, gender)
-      5. Validate the extracted fields
-      6. Map fields to farmer profile suggestions
+    Supported document types:
+      - 'aadhar' / 'aadhaar' — Aadhaar card (Tesseract OCR)
+      - 'pan' — PAN card (Tesseract OCR)
+      - '7_12' — Maharashtra 7/12 Satbara extract (Gemini Vision)
 
-    Returns structured JSON with extracted fields and auto-fill suggestions.
+    The DocumentRouter dispatches to the correct processor.
+    All processors return the same standardised ExtractionResult schema.
     """
     db = get_db()
 
@@ -98,51 +103,55 @@ async def upload_document(
         logger.error(f"Failed to save file '{unique_filename}': {e}")
         raise HTTPException(status_code=500, detail=f"Could not save file: {str(e)}")
 
-    # ── Run OCR Pipeline ─────────────────────────────────────────────
-    ocr_result = run_ocr_pipeline(file_path, expected_doc_type=doc_type)
-    result_dict = ocr_result.to_dict()
+    # ── Route through Document Processing Engine ─────────────────────
+    extraction_result = document_router.route(file_path, doc_type=safe_doc_type)
+
+    # ── Document type mismatch rejection ─────────────────────────────
+    if not extraction_result.success and extraction_result.error:
+        # Check if this is a document type mismatch (processor returns
+        # success=False with a descriptive error when the classified type
+        # doesn't match the expected type).
+        raise HTTPException(
+            status_code=400,
+            detail=extraction_result.error,
+        )
+
+    # ── Semantic Normalization ────────────────────────────────────────
+    from app.document_processing.normalizer import SemanticNormalizer
+    normalizer = SemanticNormalizer()
+    extraction_result = normalizer.normalize(extraction_result)
+
+    # ── Business Rules Validation ─────────────────────────────────────
+    extraction_result = normalizer.validate_business_rules(extraction_result)
+
+    result_dict = extraction_result.to_dict()
 
     logger.info(
-        f"OCR pipeline result: type={ocr_result.documentType}, "
-        f"valid={ocr_result.validation.get('valid')}, "
-        f"time={ocr_result.processingTimeMs:.0f}ms"
+        f"Extraction result: type={extraction_result.document_type}, "
+        f"success={extraction_result.success}, "
+        f"fields={extraction_result.populated_field_names}, "
+        f"time={extraction_result.processing_time_ms:.0f}ms"
     )
 
-    # ── Persist document reference & verified fields to DB ───────────
+    # ── Build profile update via ProfileBuilder ────────────────────────
+    from app.document_processing.profile_builder import FarmerProfileBuilder
+    from app.document_processing.validator import DocumentValidator
+
+    builder = FarmerProfileBuilder()
+    set_fields = builder.build_update(extraction_result)
+
+    # ── Cross-document validation ─────────────────────────────────────
+    validator = DocumentValidator()
+    existing_farmer = await db["farmers"].find_one(
+        {"_id": ObjectId(current_user["_id"])}
+    )
+    validation_summary = validator.validate(set_fields, existing_farmer, safe_doc_type)
+
+    # ── Persist document reference & extracted fields to DB ───────────
     document_record = f"{safe_doc_type}:{file_path}"
     db_update: dict = {
         "$addToSet": {"documents_uploaded": document_record}
     }
-    set_fields: dict = {}
-
-    # Only persist verified ID numbers / land details when validation passed
-    if ocr_result.validation.get("valid"):
-        extracted = ocr_result.fields
-        suggestions = ocr_result.profileSuggestions
-
-        if safe_doc_type in {"aadhar", "aadhaar"} and extracted.get("aadhaarNumber"):
-            clean_aadhar = extracted["aadhaarNumber"].replace(" ", "")
-            set_fields["aadhar_number"] = clean_aadhar
-            set_fields["aadhar_last4"] = clean_aadhar[-4:]
-            set_fields["is_aadhar_verified"] = True
-
-        elif safe_doc_type == "pan" and extracted.get("panNumber"):
-            set_fields["pan_number"] = extracted["panNumber"].upper()
-            set_fields["is_pan_verified"] = True
-
-        elif safe_doc_type in {"satbara", "satbara_7_12", "7_12", "7/12"}:
-            if suggestions.get("land_size_hectares"):
-                set_fields["land_size_hectares"] = suggestions["land_size_hectares"]
-            if suggestions.get("village"):
-                set_fields["village"] = suggestions["village"]
-            if suggestions.get("taluka"):
-                set_fields["taluka"] = suggestions["taluka"]
-            if suggestions.get("district"):
-                set_fields["district"] = suggestions["district"]
-            if suggestions.get("state"):
-                set_fields["state"] = suggestions["state"]
-            set_fields["is_land_record_verified"] = True
-
     if set_fields:
         db_update["$set"] = set_fields
 
@@ -152,20 +161,22 @@ async def upload_document(
             db_update,
         )
     except Exception as e:
-        # DB update failure is non-fatal — we still return OCR results
+        # DB update failure is non-fatal — we still return extraction results
         logger.error(f"DB update failed for user {current_user['_id']}: {e}")
 
-    # ── Build response ────────────────────────────────────────────────
-    # Always return success=True if the file was saved (OCR is best-effort)
-    return {
+    response = {
         "status": "success",
         "filename": unique_filename,
-        "documentType": result_dict["documentType"],
-        "confidence": result_dict["confidence"],
+        "documentType": extraction_result.document_type,
         "fields": result_dict["fields"],
         "validation": result_dict["validation"],
-        "profileSuggestions": result_dict["profileSuggestions"],
-        "processingTimeMs": result_dict["processingTimeMs"],
-        # rawTextSnippet only in debug — do not expose in production
-        # "rawTextSnippet": result_dict["rawTextSnippet"],
+        "processingTimeMs": result_dict["processing_time_ms"],
     }
+
+    if validation_summary.has_conflicts:
+        response["cross_document_validation"] = validation_summary.to_dict()
+
+    if extraction_result.error:
+        response["error"] = extraction_result.error
+
+    return response

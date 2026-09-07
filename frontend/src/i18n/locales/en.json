@@ -382,6 +382,9 @@
     "verified_error": "Verification Failed ❌ Please re-upload.",
     "kyc_gate_title": "Identity Verification",
     "kyc_gate_desc": "Upload your Aadhaar and PAN cards for automatic verification. This is mandatory to ensure security and eligibility.",
+    "step_land_record": "Land Record",
+    "analyzing_land_record": "Analyzing land record. This may take a few seconds.",
+    "scanning_document": "Scanning document...",
     "step_4": "Success",
     "finish_setup": "Finish Setup"
   },

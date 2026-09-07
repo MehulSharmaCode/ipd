@@ -59,8 +59,23 @@ class FarmerProfile(BaseModel):
     pan_number: Optional[str] = Field(None, example="ABCDE1234F")
     is_aadhar_verified: bool = Field(default=False)
     is_pan_verified: bool = Field(default=False)
+    is_7_12_verified: bool = Field(default=False)
     annual_income: Optional[float] = Field(None, example=60000.0)
     bank_account_linked: Optional[bool] = Field(default=False)
+    
+    # 7/12 Satbara Document Fields (populated by Gemini extraction)
+    owner_name: Optional[str] = Field(None, description="Land owner name from 7/12")
+    survey_number: Optional[str] = Field(None, description="Survey/Bhoomapan number")
+    gat_number: Optional[str] = Field(None, description="Gat number")
+    village: Optional[str] = Field(None, description="Village from 7/12")
+    taluka: Optional[str] = Field(None, description="Taluka from 7/12")
+    land_area: Optional[str] = Field(None, description="Land area with unit")
+    current_crop: Optional[str] = Field(None, description="Current crop(s)")
+    land_use: Optional[str] = Field(None, description="agricultural/non-agricultural/mixed")
+    co_owners: Optional[List[str]] = Field(default=None, description="Co-owner names from 7/12")
+    father_name: Optional[str] = Field(None, description="Father's name from PAN")
+    dob: Optional[str] = Field(None, description="Date of birth from OCR")
+    birth_year: Optional[str] = Field(None, description="Birth year from OCR")
     
     # Agricultural Data
     land_size_hectares: Optional[float] = Field(None, example=1.5)
@@ -136,6 +151,21 @@ class FarmerUpdate(BaseModel):
     pan_number: Optional[str] = None
     is_aadhar_verified: Optional[bool] = None
     is_pan_verified: Optional[bool] = None
+    is_7_12_verified: Optional[bool] = None
+    
+    # 7/12 Satbara Document Fields
+    owner_name: Optional[str] = None
+    survey_number: Optional[str] = None
+    gat_number: Optional[str] = None
+    village: Optional[str] = None
+    taluka: Optional[str] = None
+    land_area: Optional[str] = None
+    current_crop: Optional[str] = None
+    land_use: Optional[str] = None
+    co_owners: Optional[List[str]] = None
+    father_name: Optional[str] = None
+    dob: Optional[str] = None
+    birth_year: Optional[str] = None
     annual_income: Optional[float] = None
     bank_account_linked: Optional[bool] = None
     land_size_hectares: Optional[float] = None
