@@ -1,5 +1,6 @@
 # backend/app/api/farmers.py
 import logging
+from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends
 from bson import ObjectId
 from typing import List
@@ -94,10 +95,30 @@ async def recommend_crop(data: dict, current_user: dict = Depends(get_current_us
         raise HTTPException(status_code=500, detail=f"Crop recommendation failed: {str(e)}")
 
 
+# Projection for the recommendation hot path: every field actually consumed by
+# RulesEngine / SchemeSuccessPredictor / BenefitPredictor / SchemeKnowledgeGraph /
+# SchemeRankingEngine / SchemeExplainer, plus the new required_documents and
+# application_timeline enrichment. Deliberately EXCLUDES eligibility_raw and
+# benefits_raw (verified unused anywhere in the ranking path, and the two
+# largest fields on a scheme document) so this is a size reduction, not a
+# regression, on top of adding the new enrichment fields.
+SCHEME_PROJECTION = {
+    "_id": 1, "scheme_id": 1, "name": 1, "department": 1, "description": 1,
+    "category": 1, "level": 1, "state": 1, "benefit_type": 1,
+    "benefit_calculation": 1, "conflicts_with": 1, "rules": 1, "status": 1,
+    "source_url": 1, "myscheme_slug": 1, "financial_benefit": 1,
+    "manually_verified": 1, "extraction_method": 1, "extraction_confidence": 1,
+    "required_documents": 1, "application_timeline": 1,
+}
+
+
 async def get_published_schemes(db) -> list | None:
     try:
         # Fetch published schemes with extracted rules
-        schemes_cursor = db["schemes"].find({"status": "published", "rules": {"$exists": True, "$ne": []}})
+        schemes_cursor = db["schemes"].find(
+            {"status": "published", "rules": {"$exists": True, "$ne": []}},
+            SCHEME_PROJECTION,
+        )
         schemes = await schemes_cursor.to_list(length=None)
         return schemes if schemes else None
     except Exception as e:

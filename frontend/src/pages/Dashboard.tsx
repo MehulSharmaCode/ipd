@@ -40,6 +40,9 @@ import { toast } from 'sonner';
 import { useTranslationText } from '@/hooks/useTranslationText';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
+import { SchemeReasonPanel } from '@/components/SchemeReasonPanel';
+import { SchemeDocumentsList } from '@/components/SchemeDocumentsList';
+import { SchemeTimelineBadge } from '@/components/SchemeTimelineBadge';
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'home' | 'profile'>('home');
@@ -478,25 +481,39 @@ export default function Dashboard() {
                                 </div>
 
                                 <div className="flex flex-col gap-4 mt-4">
-                                  {bundle.schemes.map((scheme: any, idx: number) => (
-                                    <div key={`s-${idx}`} className="bg-white/50 dark:bg-slate-900/50 p-5 rounded-2xl border border-emerald-100 dark:border-emerald-900/50 shadow-sm flex flex-col md:flex-row md:items-start justify-between group hover:border-emerald-500 transition-all gap-4">
+                                  {bundle.schemes.map((scheme: any, idx: number) => {
+                                    const isExpired = scheme.timeline_state?.state === 'expired';
+                                    return (
+                                    <div key={`s-${idx}`} className={`bg-white/50 dark:bg-slate-900/50 p-5 rounded-2xl border border-emerald-100 dark:border-emerald-900/50 shadow-sm flex flex-col md:flex-row md:items-start justify-between group hover:border-emerald-500 transition-all gap-4 ${isExpired ? 'opacity-70' : ''}`}>
                                       <div className="flex items-start gap-4 flex-1">
                                         <div className="bg-emerald-50 dark:bg-emerald-950/50 p-3 rounded-xl text-emerald-600 dark:text-emerald-400 font-bold group-hover:bg-emerald-600 group-hover:text-white transition-colors shrink-0">
                                           {scheme.scheme_id.toString().slice(0, 3).toUpperCase()}
                                         </div>
                                         <div className="flex-1">
-                                          <div className="flex items-center gap-2 mb-2">
+                                          <div className="flex items-center gap-2 mb-2 flex-wrap">
                                             <h4 className="font-bold text-slate-900 dark:text-white text-lg">{scheme.scheme_name}</h4>
                                             <Badge variant="outline" className="text-[10px] h-5 bg-emerald-50/50 text-emerald-600 border-emerald-200">
                                               {Math.round((scheme.success_probability || 0) * 100)}% Match
                                             </Badge>
                                           </div>
-                                          <div className="text-sm text-slate-600 dark:text-slate-400 space-y-1 mt-2 bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
-                                            <p className="font-semibold text-emerald-700 dark:text-emerald-500 mb-1">Why you were selected:</p>
-                                            {Array.isArray(scheme.explanation) ? scheme.explanation.map((reason: string, rIdx: number) => (
-                                              <p key={rIdx} className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 mt-0.5 text-emerald-500 shrink-0" /> {reason}</p>
-                                            )) : <p className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 mt-0.5 text-emerald-500 shrink-0" /> {scheme.explanation}</p>}
-                                          </div>
+
+                                          <SchemeTimelineBadge timelineState={scheme.timeline_state} timeline={scheme.application_timeline} />
+
+                                          {scheme.match_signals?.length > 0 ? (
+                                            <SchemeReasonPanel
+                                              reasonSummary={scheme.reason_summary}
+                                              signals={scheme.match_signals}
+                                              confidence={scheme.reason_confidence}
+                                              sourceUrl={scheme.source_url}
+                                            />
+                                          ) : (
+                                            <div className="text-sm text-slate-600 dark:text-slate-400 space-y-1 mt-2 bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
+                                              <p className="font-semibold text-emerald-700 dark:text-emerald-500 mb-1">Why you were selected:</p>
+                                              {Array.isArray(scheme.explanation) ? scheme.explanation.map((reason: string, rIdx: number) => (
+                                                <p key={rIdx} className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 mt-0.5 text-emerald-500 shrink-0" /> {reason}</p>
+                                              )) : <p className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 mt-0.5 text-emerald-500 shrink-0" /> {scheme.explanation}</p>}
+                                            </div>
+                                          )}
 
                                           {scheme.predicted_financial_value > 0 && (
                                             <div className="mt-3">
@@ -517,6 +534,8 @@ export default function Dashboard() {
                                               </div>
                                             </div>
                                           )}
+
+                                          <SchemeDocumentsList documents={scheme.required_documents} sourceUrl={scheme.source_url} />
                                         </div>
                                       </div>
                                        <Button
@@ -528,53 +547,71 @@ export default function Dashboard() {
                                            window.open(targetUrl, '_blank', 'noopener,noreferrer');
                                          }}
                                        >
-                                         {t('dashboard.apply')} <ChevronRight className="ml-1 h-4 w-4" />
+                                         {isExpired ? t('dashboard.view_scheme') : t('dashboard.apply')} <ChevronRight className="ml-1 h-4 w-4" />
                                        </Button>
                                     </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               </motion.div>
                             ))
                           ) : farmer.recommended_schemes && farmer.recommended_schemes.length > 0 ? (
                             // Fallback: show individual schemes if bundles is empty
-                            farmer.recommended_schemes.map((scheme: any, i: number) => (
+                            farmer.recommended_schemes.map((scheme: any, i: number) => {
+                              const isExpired = scheme.timeline_state?.state === 'expired';
+                              return (
                               <motion.div
                                 initial={{ opacity: 0, x: -20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: i * 0.1 }}
                                 key={scheme.scheme_id}
-                                className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-emerald-500 dark:hover:border-emerald-500 transition-all cursor-pointer hover:shadow-md"
+                                className={`bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-start justify-between group hover:border-emerald-500 dark:hover:border-emerald-500 transition-all gap-4 hover:shadow-md ${isExpired ? 'opacity-70' : ''}`}
                               >
-                                <div className="flex items-center gap-4">
-                                  <div className="bg-emerald-50 dark:bg-emerald-950/50 p-3 rounded-xl text-emerald-600 dark:text-emerald-400 font-bold group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                                <div className="flex items-start gap-4 flex-1">
+                                  <div className="bg-emerald-50 dark:bg-emerald-950/50 p-3 rounded-xl text-emerald-600 dark:text-emerald-400 font-bold group-hover:bg-emerald-600 group-hover:text-white transition-colors shrink-0">
                                     {scheme.scheme_id.toString().slice(0, 3).toUpperCase()}
                                   </div>
                                   <div className="flex-1">
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                       <h4 className="font-bold text-slate-900 dark:text-white">{scheme.scheme_name}</h4>
                                       <Badge variant="outline" className="text-[10px] h-5 bg-emerald-50/50 text-emerald-600 border-emerald-200">
                                         {Math.round(scheme.success_probability * 100)}% Match
                                       </Badge>
                                     </div>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">{scheme.explanation}</p>
+
+                                    <SchemeTimelineBadge timelineState={scheme.timeline_state} timeline={scheme.application_timeline} />
+
+                                    {scheme.match_signals?.length > 0 ? (
+                                      <SchemeReasonPanel
+                                        reasonSummary={scheme.reason_summary}
+                                        signals={scheme.match_signals}
+                                        confidence={scheme.reason_confidence}
+                                        sourceUrl={scheme.source_url}
+                                      />
+                                    ) : (
+                                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">{scheme.explanation}</p>
+                                    )}
                                     {scheme.predicted_financial_value > 0 && (
                                       <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-semibold">₹{scheme.predicted_financial_value?.toLocaleString()} — {scheme.benefit_type}</p>
                                     )}
+
+                                    <SchemeDocumentsList documents={scheme.required_documents} sourceUrl={scheme.source_url} />
                                   </div>
                                 </div>
                                  <Button
                                    variant="ghost"
-                                   className="rounded-full text-slate-600 dark:text-slate-300 group-hover:bg-emerald-600 group-hover:text-white transition-all"
+                                   className="rounded-full text-slate-600 dark:text-slate-300 group-hover:bg-emerald-600 group-hover:text-white transition-all self-end md:self-center shrink-0"
                                    onClick={(e) => {
                                      e.stopPropagation();
                                      const targetUrl = scheme.source_url || `https://www.myscheme.gov.in/schemes/${scheme.scheme_id?.toString().toLowerCase().replace(/_/g, '-')}`;
                                      window.open(targetUrl, '_blank', 'noopener,noreferrer');
                                    }}
                                  >
-                                   {t('dashboard.apply')} <ChevronRight className="ml-1 h-4 w-4" />
+                                   {isExpired ? t('dashboard.view_scheme') : t('dashboard.apply')} <ChevronRight className="ml-1 h-4 w-4" />
                                  </Button>
                               </motion.div>
-                            ))
+                              );
+                            })
                           ) : (
                             <div className="text-center py-10 bg-slate-100/50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
                               <p className="text-slate-500 dark:text-slate-400 italic">No recommended schemes found. Complete your profile for better matches.</p>

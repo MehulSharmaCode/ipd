@@ -1,0 +1,29 @@
+{
+  "id": "LBezF5gB5uF80_MGGY81",
+  "fields": {
+    "beneficiaryState": [
+      "All"
+    ],
+    "schemeShortTitle": "SUPI",
+    "level": "Central",
+    "schemeFor": "Individual",
+    "nodalMinistryName": "Ministry Of Finance",
+    "schemeCategory": [
+      "Business & Entrepreneurship",
+      "Banking,Financial Services and Insurance",
+      "Social welfare & Empowerment"
+    ],
+    "schemeName": "Stand-Up India",
+    "schemeCloseDate": "2025-03-31",
+    "priority": 1,
+    "slug": "sui",
+    "briefDescription": "A scheme by Ministry of Finance for financing SC/ST and  Women Entrepreneurs by facilitating bank loans for setting up a greenfield project  Enterprise in manufacturing, services, trading sector and activities allied to agriculture.",
+    "tags": [
+      "Loan",
+      "Entrepreneur",
+      "Finance",
+      "Business"
+    ]
+  },
+  "highlight": {}
+}

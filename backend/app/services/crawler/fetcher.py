@@ -190,3 +190,75 @@ class MySchemeApiFetcher:
 
         return results
 
+    async def fetch_scheme_documents(self, client: httpx.AsyncClient,
+                                      scheme_object_id: str) -> Optional[Dict]:
+        """
+        Fetch the 'Documents Required' sub-resource for one scheme.
+
+        Endpoint (reverse-engineered from myscheme.gov.in DevTools, 2026-09-08):
+            GET /schemes/v6/public/schemes/{scheme_object_id}/documents?lang=en
+
+        scheme_object_id is the Mongo ObjectId from the detail response
+        (detail["data"]["_id"]) -- NOT the Elasticsearch id from the search
+        endpoint (item["id"]).
+
+        Returns the parsed JSON body, or None on transport/parse failure.
+        A body of {"status": "Success", "data": null} means the scheme has no
+        documents section and IS returned as-is -- that is a valid "unavailable"
+        answer, not a failure.
+        """
+        if not scheme_object_id:
+            return None
+
+        url = f"{self.base_url}/schemes/v6/public/schemes/{scheme_object_id}/documents"
+        resp = await self._request_with_retry(client, url, {"lang": "en"})
+
+        if resp is None or resp.status_code != 200:
+            logger.warning(
+                f"Failed to fetch documents for scheme_object_id '{scheme_object_id}': "
+                f"status={resp.status_code if resp else 'no response'}"
+            )
+            return None
+
+        try:
+            return resp.json()
+        except Exception as exc:
+            logger.warning(
+                f"Could not parse documents JSON for scheme_object_id "
+                f"'{scheme_object_id}': {exc}"
+            )
+            return None
+
+    async def fetch_documents_batch(self, object_ids: Dict[str, str],
+                                     max_concurrency: int = 2) -> Dict[str, Optional[Dict]]:
+        """
+        Fetch the documents sub-resource for a batch of schemes concurrently
+        with the same polite rate limiting as fetch_details_batch.
+
+        Args:
+            object_ids: mapping of slug -> Mongo ObjectId (detail["data"]["_id"]).
+
+        Returns:
+            mapping of slug -> documents payload (or None on failure).
+        """
+        results: Dict[str, Optional[Dict]] = {}
+        sem = asyncio.Semaphore(max_concurrency)
+        completed_count = 0
+        slugs = list(object_ids.keys())
+
+        async with httpx.AsyncClient(headers=self._build_headers(), timeout=20.0) as client:
+            async def fetch_one(slug: str, object_id: str):
+                nonlocal completed_count
+                async with sem:
+                    res = await self.fetch_scheme_documents(client, object_id)
+                    results[slug] = res
+                    completed_count += 1
+                    if completed_count % 50 == 0 or completed_count == len(slugs):
+                        logger.info(f"  {completed_count}/{len(slugs)} scheme documents fetched")
+                    await asyncio.sleep(0.5)
+
+            tasks = [fetch_one(slug, oid) for slug, oid in object_ids.items()]
+            await asyncio.gather(*tasks)
+
+        return results
+

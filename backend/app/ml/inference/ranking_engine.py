@@ -37,6 +37,7 @@ from app.ml.utils.logger import get_logger
 from app.ml.features.feature_store import FeatureStore
 from app.ml.graph.knowledge_graph import SchemeKnowledgeGraph
 from app.ml.inference.benefit_predictor import BenefitPredictor
+from app.services.crawler.timeline_extractor import evaluate_timeline_state
 
 
 logger = get_logger(__name__)
@@ -109,6 +110,18 @@ def _classify_domain(scheme: dict) -> bool:
     )
 
     return is_agri_by_category and not has_non_agri_override
+
+
+def _public_documents(rd: dict | None) -> dict | None:
+    """
+    Strip raw_markdown from the API-facing copy of required_documents --
+    it is provenance for the audit endpoint (GET /api/schemes/{id}/requirements),
+    not payload every recommendation response needs to carry. Keeps
+    GET /api/farmers/me materially smaller.
+    """
+    if not rd:
+        return None
+    return {k: v for k, v in rd.items() if k != "raw_markdown"}
 
 
 class SchemeRankingEngine:
@@ -223,6 +236,17 @@ class SchemeRankingEngine:
 
             probability = all_probabilities[scheme_idx]
             explanation = SchemeExplainer.explain_eligible(scheme.get("passed_rules", []))
+
+            # ── Evidence-based reasoning (required-documents/timeline feature) ──
+            rule_provenance = (
+                "manual" if scheme.get("manually_verified") is True
+                else (scheme.get("extraction_method") or "unknown")
+            )
+            match_signals = SchemeExplainer.build_match_signals(
+                scheme.get("passed_rules", []), rule_provenance
+            )
+            reason_summary = SchemeExplainer.build_reason_summary(match_signals)
+            reason_confidence = SchemeExplainer.compute_reason_confidence(match_signals, scheme)
 
             # Dynamic Financial Value Prediction
             predicted_benefit = self.benefit_predictor.predict_benefit(scheme, base_farmer_features)
@@ -357,6 +381,16 @@ class SchemeRankingEngine:
                 "prediction_explanation": predicted_benefit["prediction_explanation"],
                 "financial_benefit": predicted_benefit["predicted_financial_value"],
                 "source_url": source_url,
+                # --- Evidence-based reasoning + requirements/timeline. Attached
+                # ONLY to eligible schemes -- never to ineligible_results, which
+                # is already large (see docs/SCHEME_REQUIREMENTS_FEATURE_PLAN.md
+                # sec. 1.4/7b on payload size). ---
+                "match_signals": match_signals[:6],
+                "reason_summary": reason_summary,
+                "reason_confidence": reason_confidence,
+                "required_documents": _public_documents(scheme.get("required_documents")),
+                "application_timeline": scheme.get("application_timeline"),
+                "timeline_state": evaluate_timeline_state(scheme.get("application_timeline")),
             })
 
         # Step 5 — Sort by relevance score

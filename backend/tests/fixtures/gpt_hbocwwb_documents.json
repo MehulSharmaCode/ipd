@@ -1,0 +1,14 @@
+{
+  "status": "Success",
+  "statusCode": 200,
+  "errorDescription": "",
+  "error": "{}",
+  "data": {
+    "_id": "64a5965b481f59106a70bda2",
+    "en": {
+      "documents_required": [],
+      "documentsRequired_md": "\n1. Identity proof i.e. Aadhaar Card, Voter Card\n1. Passport-size photograph\n1. [Undertaking](https://storage.hrylabour.gov.in/uploads_new_2/bocw/scheme_undertaking/1628746916.pdf)1. [Work Slip](https://hrylabour.gov.in/staticdocs/parman-patars.jpg)1. Proof of residence\n1. Ration Card\n1. Bank account details\n1. Caste Certificate (If applicable)\n1. Birth Certificate (If applicable)\n1. An undertaking along with the price, of tools and source of purchase\n\n"
+    },
+    "schemeId": "64a5965b481f59106a70bda2"
+  }
+}

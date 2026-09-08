@@ -19,6 +19,7 @@ from app.services.crawler.fetcher import MySchemeApiFetcher
 from app.services.crawler.parser import MySchemeParser
 from app.services.crawler.normalizer import MySchemeNormalizer
 from app.services.crawler.rule_extractor import extract_rules_from_text
+from app.services.crawler.document_extractor import build_required_documents
 from app.core.database import get_db
 
 logger = logging.getLogger(__name__)
@@ -56,6 +57,9 @@ class MySchemeIngestionScheduler:
             "updated_schemes": 0,
             "skipped_fresh": 0,
             "errors": 0,
+            "documents_fetched": 0,
+            "documents_missing": 0,
+            "documents_failed": 0,
             "completed_at": None,
         }
 
@@ -122,6 +126,18 @@ class MySchemeIngestionScheduler:
         else:
             details = {}
 
+        # Step 3b: Fetch the Documents Required sub-resource for each fetched
+        # scheme. Keyed by the Mongo ObjectId in the detail payload
+        # (detail["data"]["_id"]) -- NOT the search endpoint's Elasticsearch id.
+        object_ids: Dict[str, str] = {}
+        for slug, payload in details.items():
+            oid = ((payload or {}).get("data") or {}).get("_id")
+            if oid:
+                object_ids[slug] = oid
+        documents_payloads: Dict[str, Optional[Dict]] = (
+            await self.fetcher.fetch_documents_batch(object_ids) if object_ids else {}
+        )
+
         # Step 4: Normalize, extract rules, and upsert concurrently
         sem = asyncio.Semaphore(10)
         processed_count = 0
@@ -135,6 +151,26 @@ class MySchemeIngestionScheduler:
 
                     merged = self.parser.merge_summary_and_detail(parsed_summary, detail_payload)
                     normalized = self.normalizer.normalize(merged)
+
+                    # --- Required documents enrichment ------------------------------
+                    # "__not_fetched__" distinguishes "we never asked" (no object_id
+                    # was available, e.g. detail fetch itself failed) from "we asked
+                    # and got no response" (fetch_failed=True below).
+                    doc_payload = documents_payloads.get(slug, "__not_fetched__")
+                    fetch_failed = (slug in object_ids and doc_payload is None)
+                    normalized["required_documents"] = build_required_documents(
+                        None if doc_payload == "__not_fetched__" else doc_payload,
+                        source_url=normalized.get("source_url"),
+                        fetched_at=normalized["last_fetched"],
+                        fetch_failed=fetch_failed,
+                    )
+                    _doc_status = normalized["required_documents"]["status"]
+                    if _doc_status == "available":
+                        stats["documents_fetched"] += 1
+                    elif _doc_status == "fetch_failed":
+                        stats["documents_failed"] += 1
+                    else:
+                        stats["documents_missing"] += 1
 
                     # Extract rules and benefit_calculation using Gemini LLM / heuristic parser
                     if normalized.get("eligibility_raw") or normalized.get("benefits_raw"):
@@ -222,6 +258,23 @@ class MySchemeIngestionScheduler:
                         normalized["status"] = "pending_review"
 
                     if existing:
+                        # ── Enrichment write policy ────────────────────────────────
+                        #  - manually_verified -> never overwrite enrichment at all,
+                        #    same hard lock as rules/benefit_calculation above.
+                        #  - a failed documents fetch this cycle -> keep whatever
+                        #    "available" record we already had rather than clobbering
+                        #    good data with "fetch_failed".
+                        if existing.get("manually_verified") is True:
+                            if existing.get("required_documents"):
+                                normalized["required_documents"] = existing["required_documents"]
+                            if existing.get("application_timeline"):
+                                normalized["application_timeline"] = existing["application_timeline"]
+                        elif (
+                            normalized["required_documents"]["status"] == "fetch_failed"
+                            and (existing.get("required_documents") or {}).get("status") == "available"
+                        ):
+                            normalized["required_documents"] = existing["required_documents"]
+
                         # Diff old vs new document for meaningful changes
                         changed_fields = []
                         if existing.get("eligibility_raw") != normalized.get("eligibility_raw"):
@@ -232,6 +285,14 @@ class MySchemeIngestionScheduler:
                             changed_fields.append("status")
                         if existing.get("rules") != normalized.get("rules"):
                             changed_fields.append("rules")
+                        if (existing.get("required_documents") or {}).get("items") != \
+                                (normalized.get("required_documents") or {}).get("items"):
+                            changed_fields.append("documents")
+                        _existing_timeline = existing.get("application_timeline") or {}
+                        _new_timeline = normalized.get("application_timeline") or {}
+                        if (_existing_timeline.get("open_date_raw"), _existing_timeline.get("close_date_raw")) != \
+                                (_new_timeline.get("open_date_raw"), _new_timeline.get("close_date_raw")):
+                            changed_fields.append("timeline")
 
                         update_fields = {
                             "name": normalized["name"],
@@ -252,6 +313,11 @@ class MySchemeIngestionScheduler:
                             "content_hash": normalized["content_hash"],
                             "updated_at": datetime.utcnow(),
                             "status": normalized["status"],
+                            "myscheme_object_id": normalized.get("myscheme_object_id"),
+                            "scheme_open_date_raw": normalized.get("scheme_open_date_raw"),
+                            "scheme_close_date_raw": normalized.get("scheme_close_date_raw"),
+                            "required_documents": normalized["required_documents"],
+                            "application_timeline": normalized["application_timeline"],
                             # Preserve manually_verified flag — never clear it via ingestion
                             **(  # Only include if it already exists to avoid writing None
                                 {"manually_verified": existing.get("manually_verified")}
@@ -344,6 +410,9 @@ class MySchemeIngestionScheduler:
                 "updated_schemes": stats.get("updated_schemes", 0),
                 "skipped_fresh": stats.get("skipped_fresh", 0),
                 "errors": stats.get("errors", 0),
+                "documents_fetched": stats.get("documents_fetched", 0),
+                "documents_missing": stats.get("documents_missing", 0),
+                "documents_failed": stats.get("documents_failed", 0),
                 "started_at": stats.get("started_at"),
                 "completed_at": stats.get("completed_at"),
                 "scraped_at": datetime.utcnow(),

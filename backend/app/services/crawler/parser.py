@@ -66,7 +66,25 @@ class MySchemeParser:
         if isinstance(scheme_type_raw, dict):
             scheme_type_label = scheme_type_raw.get("label")
 
+        # myscheme_object_id is the Mongo ObjectId identifying this scheme in
+        # myScheme's own database (detail["data"]["_id"]). It is NOT the same
+        # as myscheme_id (the search endpoint's Elasticsearch id) -- this is
+        # the id the /documents, /faqs and /applicationchannel sub-resource
+        # endpoints require.
+        myscheme_object_id = (detail_payload.get("data") or {}).get("_id")
+
+        # Reduced {mode, url} view of applicationProcess, used by the
+        # application-timeline enrichment. application_process (below) keeps
+        # the full raw entries (including step-by-step process content) for
+        # any future consumer that needs them.
+        application_modes = [
+            {"mode": ap.get("mode"), "url": ap.get("url")}
+            for ap in (en.get("applicationProcess") or [])
+            if isinstance(ap, dict) and ap.get("mode")
+        ]
+
         return {
+            "myscheme_object_id": myscheme_object_id,
             "implementing_agency": basic.get("implementingAgency"),
             "scheme_type": scheme_type_label,
             "scheme_open_date": basic.get("schemeOpenDate"),
@@ -77,6 +95,27 @@ class MySchemeParser:
             "benefit_type_label": benefit_type_label,
             "eligibility_description_md": eligibility.get("eligibilityDescription_md"),
             "application_process": en.get("applicationProcess", []),
+            "application_modes": application_modes,
+        }
+
+    @staticmethod
+    def parse_documents(documents_payload: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        """
+        Narrow a raw GET .../{id}/documents response to just the 'en' section
+        needed by document_extractor.build_required_documents(), or None when
+        the scheme has no documents section (payload missing or data is null).
+        """
+        if not documents_payload or not isinstance(documents_payload, dict):
+            return None
+        data = documents_payload.get("data")
+        if not isinstance(data, dict):
+            return None
+        en = data.get("en")
+        if not isinstance(en, dict):
+            return None
+        return {
+            "documentsRequired_md": en.get("documentsRequired_md"),
+            "documents_required": en.get("documents_required"),
         }
 
     @staticmethod

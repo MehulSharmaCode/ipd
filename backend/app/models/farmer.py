@@ -1,6 +1,77 @@
 from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator, ConfigDict
-from typing import List, Optional
+from typing import Any, List, Optional
+from datetime import datetime
 import re
+
+
+# --- Evidence-based reasoning + requirements/timeline models -----------------
+# Added for the scheme requirements/timeline/reasoning feature; see
+# docs/SCHEME_REQUIREMENTS_FEATURE_PLAN.md sections 5.1, 5.2, 5.6, 8a.
+# These are additive -- SchemeRecommendation's original 7 fields are unchanged
+# and the frontend/existing consumers are unaffected.
+
+class MatchSignal(BaseModel):
+    signal_type: str
+    field: str
+    operator: str
+    scheme_value: Any = None
+    profile_value: Any = None
+    profile_field: Optional[str] = None
+    text: str
+    evidence_source: str = "scheme_rule"
+    rule_provenance: str = "unknown"
+
+
+class RequiredDocumentItem(BaseModel):
+    raw_text: str
+    display_name: str
+    doc_type: str = "UNKNOWN"
+    requirement: str = "mandatory"
+    condition_text: Optional[str] = None
+    match_confidence: str = "none"
+    links: List[str] = []
+
+
+class RequiredDocuments(BaseModel):
+    status: str = "not_fetched"
+    source: Optional[str] = None
+    source_url: Optional[str] = None
+    fetched_at: Optional[datetime] = None
+    items: List[RequiredDocumentItem] = []
+    item_count: int = 0
+    unmatched_count: int = 0
+    extractor_version: int = 1
+
+
+class ApplicationMode(BaseModel):
+    mode: str
+    url: Optional[str] = None
+
+
+class TimelineMention(BaseModel):
+    kind: str
+    excerpt: str
+    field: Optional[str] = None
+
+
+class ApplicationTimeline(BaseModel):
+    status: str = "unknown"
+    open_date: Optional[datetime] = None
+    close_date: Optional[datetime] = None
+    open_date_raw: Optional[str] = None
+    close_date_raw: Optional[str] = None
+    open_date_source: Optional[str] = None
+    close_date_source: Optional[str] = None
+    application_modes: List[ApplicationMode] = []
+    text_mentions: List[TimelineMention] = []
+    fetched_at: Optional[datetime] = None
+    extractor_version: int = 1
+
+
+class TimelineState(BaseModel):
+    state: str = "unknown"
+    days_remaining: Optional[int] = None
+    label: str = ""
 
 
 class SchemeRecommendation(BaseModel):
@@ -11,6 +82,14 @@ class SchemeRecommendation(BaseModel):
     predicted_financial_value: int = 0
     benefit_type: str = ""
     prediction_explanation: str = ""
+    # --- new: evidence-based reasoning + requirements (see module docstring) ---
+    source_url: Optional[str] = None
+    match_signals: List[MatchSignal] = []
+    reason_summary: str = ""
+    reason_confidence: str = "low"
+    required_documents: Optional[RequiredDocuments] = None
+    application_timeline: Optional[ApplicationTimeline] = None
+    timeline_state: Optional[TimelineState] = None
 
 
 class IneligibleScheme(BaseModel):

@@ -7,6 +7,7 @@ from bson import ObjectId
 
 from app.core.database import get_db
 from app.models.scheme import SchemeCreate, SchemeUpdate, SchemeResponse, SchemeDB
+from app.services.crawler.timeline_extractor import evaluate_timeline_state
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/schemes", tags=["Schemes"])
@@ -67,6 +68,62 @@ async def get_scheme_by_id(scheme_id: str):
 
     scheme["_id"] = str(scheme["_id"])
     return scheme
+
+
+_NOT_FETCHED_DOCUMENTS = {
+    "status": "not_fetched", "source": None, "source_url": None,
+    "fetched_at": None, "raw_markdown": None, "items": [],
+    "item_count": 0, "unmatched_count": 0, "extractor_version": 1,
+}
+_UNKNOWN_TIMELINE = {
+    "status": "unknown", "open_date": None, "close_date": None,
+    "open_date_raw": None, "close_date_raw": None,
+    "open_date_source": None, "close_date_source": None,
+    "application_modes": [], "text_mentions": [], "fetched_at": None,
+    "extractor_version": 1,
+}
+
+
+@router.get("/{scheme_id}/requirements")
+async def get_scheme_requirements(scheme_id: str):
+    """
+    Full requirements record for one scheme, including the verbatim source
+    markdown (stripped out of the /api/farmers/me recommendation payload to
+    keep it small). Used by the Dashboard's scheme detail view and for
+    auditing exactly what the app is showing farmers.
+
+    Unauthenticated, like the rest of this router -- this is public
+    government-scheme information, not personal data.
+
+    A scheme that exists but has never been enriched returns 200 with
+    required_documents.status == "not_fetched" / application_timeline.status
+    == "unknown" -- "we don't know yet" is a real, honest answer, not a 404.
+    """
+    db = get_db()
+    if db is None:
+        raise HTTPException(status_code=500, detail="Database connection uninitialized")
+
+    query = {"$or": [{"scheme_id": scheme_id}]}
+    if ObjectId.is_valid(scheme_id):
+        query["$or"].append({"_id": ObjectId(scheme_id)})
+
+    scheme = await db["schemes"].find_one(query)
+    if not scheme:
+        raise HTTPException(status_code=404, detail=f"Scheme '{scheme_id}' not found")
+
+    required_documents = scheme.get("required_documents") or _NOT_FETCHED_DOCUMENTS
+    application_timeline = scheme.get("application_timeline") or _UNKNOWN_TIMELINE
+
+    return {
+        "status": "success",
+        "scheme_id": scheme.get("scheme_id"),
+        "scheme_name": scheme.get("name"),
+        "source_url": scheme.get("source_url"),
+        "last_fetched": scheme.get("last_fetched"),
+        "required_documents": required_documents,
+        "application_timeline": application_timeline,
+        "timeline_state": evaluate_timeline_state(application_timeline),
+    }
 
 
 @router.post("/", response_model=SchemeResponse, status_code=status.HTTP_201_CREATED)

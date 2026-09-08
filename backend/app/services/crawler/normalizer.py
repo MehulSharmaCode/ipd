@@ -19,6 +19,8 @@ import logging
 from datetime import datetime
 from typing import Dict, Any
 
+from app.services.crawler.timeline_extractor import build_application_timeline
+
 logger = logging.getLogger(__name__)
 
 
@@ -131,5 +133,24 @@ class MySchemeNormalizer:
             "updated_at": now,
         }
 
+        # --- New: enrichment inputs carried through from parser (previously
+        # parsed by parser.py but silently dropped here) ---
+        normalized["myscheme_object_id"] = parsed_record.get("myscheme_object_id")
+        normalized["scheme_open_date_raw"] = parsed_record.get("scheme_open_date")
+        normalized["scheme_close_date_raw"] = parsed_record.get("close_date")
+
+        normalized["application_timeline"] = build_application_timeline(
+            open_date_raw=parsed_record.get("scheme_open_date"),
+            close_date_raw=parsed_record.get("close_date"),
+            application_process=parsed_record.get("application_modes"),
+            eligibility_raw=normalized["eligibility_raw"],
+            benefits_raw=normalized["benefits_raw"],
+            fetched_at=now,
+        )
+
+        # content_hash intentionally excludes required_documents/application_timeline
+        # (and myscheme_object_id / scheme_open_date_raw / scheme_close_date_raw) --
+        # it only tracks the fields it already tracked before this feature, so
+        # enrichment alone never marks an unrelated scheme as "changed".
         normalized["content_hash"] = self.compute_content_hash(normalized)
         return normalized
